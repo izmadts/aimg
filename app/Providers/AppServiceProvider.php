@@ -22,6 +22,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Some hosts (older MySQL/MariaDB, common on shared hosting) cap index
+        // length below what utf8mb4 varchar(255) needs (255 * 4 = 1020 bytes).
+        // Capping the default string length to 191 keeps indexed columns like
+        // email under that limit (191 * 4 = 764 bytes) without touching every
+        // migration individually.
+        Schema::defaultStringLength(191);
+
         Gate::before(function ($user) {
             return $user->isAdmin() ? true : null;
         });
