@@ -117,7 +117,7 @@
                                     @foreach($product->cylinders as $cylinder)
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100"
                                               title="{{ $cylinder->cylinder_number }} &middot; Capacity {{ $cylinder->capacity }} m3">
-                                            <i class="fas fa-cylinder text-[10px]"></i>
+                                            <i class="fas fa-gas-pump text-[10px]"></i>
                                             {{ $cylinder->type }}: {{ $cylinder->available_quantity }}
                                             @if($cylinder->issued_quantity > 0)
                                                 <span class="text-yellow-700">({{ $cylinder->issued_quantity }} out)</span>

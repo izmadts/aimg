@@ -132,7 +132,7 @@
                             <p class="text-xl font-bold text-yellow-600">{{ $stats->total_cylinder_transactions }}</p>
                         </div>
                         <div class="bg-yellow-100 rounded-full p-2">
-                            <i class="fas fa-cylinder text-yellow-600"></i>
+                            <i class="fas fa-gas-pump text-yellow-600"></i>
                         </div>
                     </div>
                 </div>
@@ -198,7 +198,7 @@
                                         </div>
                                     @else
                                         <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                                            <i class="fas fa-cylinder text-yellow-600"></i>
+                                            <i class="fas fa-gas-pump text-yellow-600"></i>
                                         </div>
                                     @endif
                                 </div>

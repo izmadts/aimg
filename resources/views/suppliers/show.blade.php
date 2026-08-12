@@ -39,7 +39,7 @@
             <i class="fas fa-shopping-cart text-xs mr-1.5"></i> {{ $stats['total_purchases'] }} Purchases
         </span>
         <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-            <i class="fas fa-cylinder text-xs mr-1.5"></i> {{ $stats['total_cylinders'] }} Cylinders
+            <i class="fas fa-gas-pump text-xs mr-1.5"></i> {{ $stats['total_cylinders'] }} Cylinders
         </span>
         @if($stats['pending_payable'] > 0)
         <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
@@ -228,7 +228,7 @@
             <div class="bg-white rounded-lg shadow">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="text-sm font-semibold text-gray-700">
-                        <i class="fas fa-cylinder mr-2 text-gray-400"></i> Cylinder Transactions
+                        <i class="fas fa-gas-pump mr-2 text-gray-400"></i> Cylinder Transactions
                     </h3>
                 </div>
                 <div class="overflow-x-auto">
@@ -276,7 +276,7 @@
             <div class="bg-white rounded-lg shadow">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="text-sm font-semibold text-gray-700">
-                        <i class="fas fa-cylinder mr-2 text-yellow-600"></i> Cylinders with Supplier
+                        <i class="fas fa-gas-pump mr-2 text-yellow-600"></i> Cylinders with Supplier
                     </h3>
                 </div>
                 <div class="overflow-x-auto">

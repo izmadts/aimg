@@ -129,7 +129,7 @@
             @if(isset($cylinderTransactions) && $cylinderTransactions->count() > 0)
             <div class="bg-white rounded-lg shadow p-6">
                 <h3 class="text-sm font-semibold text-gray-700 mb-4">
-                    <i class="fas fa-cylinder mr-2 text-gray-400"></i> Cylinder Transactions
+                    <i class="fas fa-gas-pump mr-2 text-gray-400"></i> Cylinder Transactions
                 </h3>
                 <div class="overflow-x-auto">
                     <table class="w-full">

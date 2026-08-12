@@ -103,7 +103,7 @@
             <div class="bg-white rounded-lg shadow overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                     <h3 class="text-sm font-semibold text-gray-700">
-                        <i class="fas fa-cylinder mr-2 text-gray-400"></i> Cylinders with this Gas
+                        <i class="fas fa-gas-pump mr-2 text-gray-400"></i> Cylinders with this Gas
                     </h3>
                     <span class="text-xs text-gray-500">{{ $gasProduct->cylinders->count() }} cylinders</span>
                 </div>

@@ -42,7 +42,7 @@
                     <p class="text-xs text-gray-400">Out with customers</p>
                 </div>
                 <div class="bg-yellow-100 rounded-full p-3">
-                    <i class="fas fa-cylinder text-yellow-500 text-xl"></i>
+                    <i class="fas fa-gas-pump text-yellow-500 text-xl"></i>
                 </div>
             </div>
         </div>
@@ -173,7 +173,7 @@
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                 <h3 class="text-sm font-semibold text-gray-700">
-                    <i class="fas fa-cylinder text-yellow-600 mr-2"></i> Recently Issued Cylinders
+                    <i class="fas fa-gas-pump text-yellow-600 mr-2"></i> Recently Issued Cylinders
                 </h3>
                 <a href="{{ route('cylinders.index') }}" class="text-xs text-blue-600 hover:underline">View All</a>
             </div>
