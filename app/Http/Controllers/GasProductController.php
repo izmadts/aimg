@@ -15,7 +15,9 @@ class GasProductController extends Controller
      */
     public function index(Request $request)
     {
-        $query = GasProduct::query();
+        $query = GasProduct::with(['cylinders' => function ($q) {
+            $q->orderBy('capacity');
+        }]);
 
         // Search filter
         if ($request->filled('search')) {

@@ -81,6 +81,7 @@
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Purchase Price</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sale Price</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Stock</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Related Cylinders</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
@@ -107,6 +108,24 @@
                                 @endif">
                                 {{ $product->current_stock }}
                             </span>
+                        </td>
+                        <td class="px-6 py-3">
+                            @if($product->cylinders->isEmpty())
+                                <span class="text-xs text-gray-400 italic">No cylinder types yet</span>
+                            @else
+                                <div class="flex flex-wrap gap-1 max-w-xs">
+                                    @foreach($product->cylinders as $cylinder)
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100"
+                                              title="{{ $cylinder->cylinder_number }} &middot; Capacity {{ $cylinder->capacity }} m3">
+                                            <i class="fas fa-cylinder text-[10px]"></i>
+                                            {{ $cylinder->type }}: {{ $cylinder->available_quantity }}
+                                            @if($cylinder->issued_quantity > 0)
+                                                <span class="text-yellow-700">({{ $cylinder->issued_quantity }} out)</span>
+                                            @endif
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @endif
                         </td>
                         <td class="px-6 py-3 text-center">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
@@ -148,7 +167,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="px-6 py-8 text-center text-gray-500">
+                        <td colspan="9" class="px-6 py-8 text-center text-gray-500">
                             <i class="fas fa-inbox text-3xl mb-2 text-gray-300 block"></i>
                             No gas products found.
                             <a href="{{ route('gas-products.create') }}" class="text-blue-600 hover:underline ml-1">Add your first product</a>
