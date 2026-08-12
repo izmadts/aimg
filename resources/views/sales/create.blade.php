@@ -275,7 +275,7 @@
                     <p class="text-xs font-semibold text-blue-700 mb-2 uppercase">🧪 Gas (optional)</p>
                     <select name="items[${n}][gas_product_id]" id="gas_product_${n}"
                             class="w-full rounded-lg border-gray-300 shadow-sm text-sm mb-2"
-                            onchange="autoFillGasPrice(${n})">
+                            onchange="autoFillGasPrice(${n}); toggleCustomerCylinderFlag(${n})">
                         <option value="">— No gas on this line —</option>
                         ${gasOptions}
                     </select>
@@ -295,6 +295,13 @@
                         <span class="text-gray-500">Gas Total:</span>
                         <span class="font-semibold text-blue-700" id="gas_total_${n}">Rs. 0.00</span>
                     </div>
+                    <div id="customer_cylinder_wrap_${n}" class="hidden mt-2 pt-2 border-t border-blue-100">
+                        <label class="flex items-start gap-2 text-xs text-blue-800">
+                            <input type="checkbox" name="items[${n}][is_customer_cylinder]" value="1" id="is_customer_cylinder_${n}"
+                                   class="mt-0.5 rounded border-gray-300">
+                            <span>No cylinder from our stock on this line &mdash; confirm this gas was refilled into the <strong>customer's own cylinder</strong>.</span>
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Cylinder -->
@@ -302,7 +309,7 @@
                     <p class="text-xs font-semibold text-purple-700 mb-2 uppercase">🛢️ Cylinder (optional)</p>
                     <select name="items[${n}][cylinder_id]" id="cylinder_${n}"
                             class="w-full rounded-lg border-gray-300 shadow-sm text-sm mb-2"
-                            onchange="autoFillCylinderPrice(${n})">
+                            onchange="autoFillCylinderPrice(${n}); toggleCustomerCylinderFlag(${n})">
                         <option value="">— No cylinder on this line —</option>
                         ${cylinderOptions}
                     </select>
@@ -341,6 +348,22 @@
 
         container.appendChild(row);
         calculateTotals();
+    }
+
+    function toggleCustomerCylinderFlag(n) {
+        const wrap = document.getElementById('customer_cylinder_wrap_' + n);
+        const checkbox = document.getElementById('is_customer_cylinder_' + n);
+        if (!wrap || !checkbox) return;
+
+        const hasGas = document.getElementById('gas_product_' + n)?.value;
+        const hasCylinder = document.getElementById('cylinder_' + n)?.value;
+
+        if (hasGas && !hasCylinder) {
+            wrap.classList.remove('hidden');
+        } else {
+            wrap.classList.add('hidden');
+            checkbox.checked = false;
+        }
     }
 
     function removeItem(rowId) {
@@ -488,6 +511,15 @@
             const hasGas = document.getElementById('gas_product_' + i)?.value;
             const hasCylinder = document.getElementById('cylinder_' + i)?.value;
             if (hasGas || hasCylinder) hasAnyContent = true;
+
+            if (hasGas && !hasCylinder) {
+                const confirmed = document.getElementById('is_customer_cylinder_' + i)?.checked;
+                if (!confirmed) {
+                    e.preventDefault();
+                    alert(`Line #${i}: this gas line has no cylinder from our stock. Please confirm it was refilled into the customer's own cylinder.`);
+                    return;
+                }
+            }
         }
 
         if (!hasAnyContent) {

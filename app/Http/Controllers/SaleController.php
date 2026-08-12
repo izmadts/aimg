@@ -149,6 +149,7 @@ class SaleController extends Controller
             $fields['gas_quantity'] = $itemData['gas_quantity'];
             $fields['gas_price'] = $itemData['gas_price'];
             $fields['gas_total'] = round($itemData['gas_quantity'] * $itemData['gas_price'], 2);
+            $fields['is_customer_cylinder'] = empty($itemData['cylinder_id']) && !empty($itemData['is_customer_cylinder']);
         }
 
         if (!empty($itemData['cylinder_id'])) {
@@ -344,7 +345,8 @@ class SaleController extends Controller
                     1,
                     $request->damage_charge ?? 0,
                     $request->security_deposit_refund ?? 0,
-                    $sale->invoice_no
+                    $sale->invoice_no,
+                    $request->cylinder_condition
                 );
 
                 if ($request->security_deposit_refund > 0) {

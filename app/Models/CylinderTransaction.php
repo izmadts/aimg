@@ -14,6 +14,7 @@ class CylinderTransaction extends Model
         'customer_id',
         'user_id',
         'transaction_type',
+        'condition',
         'transaction_date',
         'gas_quantity_at_transaction',
         'security_deposit_charged',

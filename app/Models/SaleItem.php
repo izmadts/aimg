@@ -20,6 +20,7 @@ class SaleItem extends Model
         'cylinder_quantity',
         'cylinder_unit_price',
         'cylinder_total',
+        'is_customer_cylinder',
         'notes'
     ];
 
@@ -30,6 +31,7 @@ class SaleItem extends Model
         'cylinder_quantity' => 'integer',
         'cylinder_unit_price' => 'decimal:2',
         'cylinder_total' => 'decimal:2',
+        'is_customer_cylinder' => 'boolean',
     ];
 
     public function sale()

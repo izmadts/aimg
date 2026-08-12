@@ -111,7 +111,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cylinder #</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gas</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Stock</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Issued</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Available</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Value</th>

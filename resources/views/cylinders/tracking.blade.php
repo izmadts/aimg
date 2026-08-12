@@ -124,7 +124,7 @@
                                         <i class="fas fa-user"></i>
                                     </a>
                                 @endif
-                                <button onclick="openReturnModal({{ $item->cylinder->id }}, '{{ $item->cylinder->cylinder_number }}', {{ $item->customer->id ?? 0 }}, '{{ $item->customer->name ?? '' }}')" 
+                                <button onclick="openReturnModal({{ $item->cylinder->id }}, '{{ $item->cylinder->cylinder_number }}', {{ $item->customer->id ?? 0 }}, '{{ $item->customer->name ?? '' }}', {{ $item->quantity }}, {{ $item->security_deposit ?? 0 }})"
                                         class="text-green-600 hover:text-green-800 transition" title="Return Cylinder">
                                     <i class="fas fa-undo"></i>
                                 </button>
@@ -145,15 +145,129 @@
     </div>
 </div>
 
-<!-- Return Modal (Same as before) -->
-<!-- ... return modal code ... -->
+<!-- Return Modal -->
+<div id="returnModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-lg font-semibold text-gray-900">
+                <i class="fas fa-undo text-green-600 mr-2"></i> Return Cylinder
+            </h3>
+            <button type="button" onclick="closeReturnModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <form id="returnForm" class="mt-4 space-y-4">
+            @csrf
+            <input type="hidden" name="cylinder_id" id="return_cylinder_id">
+            <input type="hidden" name="customer_id" id="return_customer_id">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder</label>
+                <input type="text" id="return_cylinder_number" disabled class="w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                <input type="text" id="return_customer_name" disabled class="w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Quantity Returned *</label>
+                <input type="number" name="quantity" id="return_quantity" min="1" required
+                       class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <p class="text-xs text-gray-400 mt-1"><span id="return_quantity_max"></span> issued to this customer.</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Condition *</label>
+                <select name="cylinder_condition" id="return_condition" required
+                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        onchange="toggleDamageCharge()">
+                    <option value="good">✅ Good</option>
+                    <option value="damaged">⚠️ Damaged</option>
+                    <option value="expired">⏳ Expired</option>
+                </select>
+            </div>
+            <div id="return_damage_wrap" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Damage Charge (Rs.)</label>
+                <input type="number" step="0.01" min="0" name="damage_charge" id="return_damage_charge" value="0"
+                       class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <p class="text-xs text-gray-400 mt-1">Deducted from the customer's refunded deposit.</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Security Deposit Refund (Rs.)</label>
+                <input type="number" step="0.01" min="0" name="security_deposit_refund" id="return_deposit_refund" value="0"
+                       class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <p class="text-xs text-gray-400 mt-1"><span id="return_deposit_max"></span> held as deposit.</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea name="notes" id="return_notes" rows="2" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+            </div>
+            <div class="flex justify-end space-x-3 pt-4 border-t">
+                <button type="button" onclick="closeReturnModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg transition">Cancel</button>
+                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition">
+                    <i class="fas fa-undo mr-2"></i> Return Cylinder
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 @push('scripts')
 <script>
-    function openReturnModal(cylinderId, cylinderNumber, customerId, customerName) {
-        // Your existing return modal logic
-        alert('Return cylinder: ' + cylinderNumber + ' for customer: ' + customerName);
+    function openReturnModal(cylinderId, cylinderNumber, customerId, customerName, quantity, securityDeposit) {
+        document.getElementById('return_cylinder_id').value = cylinderId;
+        document.getElementById('return_customer_id').value = customerId;
+        document.getElementById('return_cylinder_number').value = cylinderNumber;
+        document.getElementById('return_customer_name').value = customerName;
+        document.getElementById('return_quantity').value = quantity;
+        document.getElementById('return_quantity').max = quantity;
+        document.getElementById('return_quantity_max').textContent = quantity;
+        document.getElementById('return_deposit_refund').value = Number(securityDeposit || 0).toFixed(2);
+        document.getElementById('return_deposit_refund').max = securityDeposit || 0;
+        document.getElementById('return_deposit_max').textContent = 'Rs. ' + Number(securityDeposit || 0).toFixed(2);
+        document.getElementById('return_condition').value = 'good';
+        document.getElementById('return_damage_charge').value = 0;
+        document.getElementById('return_notes').value = '';
+        toggleDamageCharge();
+        document.getElementById('returnModal').classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
     }
+
+    function closeReturnModal() {
+        document.getElementById('returnModal').classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    function toggleDamageCharge() {
+        const wrap = document.getElementById('return_damage_wrap');
+        const isGood = document.getElementById('return_condition').value === 'good';
+        wrap.classList.toggle('hidden', isGood);
+        if (isGood) document.getElementById('return_damage_charge').value = 0;
+    }
+
+    document.getElementById('returnModal').addEventListener('click', function(e) {
+        if (e.target === this) closeReturnModal();
+    });
+
+    document.getElementById('returnForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        fetch('{{ route("cylinders.return") }}', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('✅ ' + data.message);
+                closeReturnModal();
+                location.reload();
+            } else {
+                alert('❌ ' + data.message);
+            }
+        })
+        .catch(error => alert('❌ Error processing request.'));
+    });
 </script>
 @endpush
 @endsection

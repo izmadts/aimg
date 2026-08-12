@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="robots" content="noindex, nofollow, noarchive">
     <title>@yield('title', 'Dashboard') - {{ \App\Models\Setting::get('company_name', config('app.name', 'ERP System')) }}</title>
     @php $favicon = \App\Models\Setting::url('favicon'); @endphp
     @if($favicon)
@@ -215,6 +216,14 @@
 
         .sidebar-overlay.active {
             display: block;
+        }
+
+        /* ============================================
+           TOP NAVIGATION
+           ============================================ */
+        .top-nav {
+            height: 4rem;
+            flex-shrink: 0;
         }
 
         /* ============================================

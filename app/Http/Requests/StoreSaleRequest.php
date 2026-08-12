@@ -34,6 +34,7 @@ class StoreSaleRequest extends FormRequest
             'items.*.cylinder_action' => 'nullable|in:issue,sell',
             'items.*.cylinder_quantity' => 'nullable|integer|min:1',
             'items.*.cylinder_unit_price' => 'nullable|numeric|min:0',
+            'items.*.is_customer_cylinder' => 'nullable|boolean',
         ];
     }
 
@@ -54,6 +55,10 @@ class StoreSaleRequest extends FormRequest
                 if (!$hasGas && !$hasCylinder) {
                     $validator->errors()->add("items.$index", 'Each line must have a gas product, a cylinder, or both.');
                     continue;
+                }
+
+                if ($hasGas && !$hasCylinder && empty($item['is_customer_cylinder'])) {
+                    $validator->errors()->add("items.$index.is_customer_cylinder", 'Gas sold without one of our cylinders must be confirmed as refilled into the customer\'s own cylinder.');
                 }
 
                 if ($hasGas) {

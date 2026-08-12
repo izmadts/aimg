@@ -361,7 +361,7 @@ class Cylinder extends Model
         return $detail;
     }
 
-    public function returnFromCustomer($customerId, $quantity = 1, $damageCharge = 0, $refund = 0, $reference = null)
+    public function returnFromCustomer($customerId, $quantity = 1, $damageCharge = 0, $refund = 0, $reference = null, $condition = null)
     {
         $details = $this->issuedDetails()
             ->where('customer_id', $customerId)
@@ -397,10 +397,11 @@ class Cylinder extends Model
             'customer_id' => $customerId,
             'user_id' => auth()->id(),
             'transaction_type' => 'returned',
+            'condition' => $condition,
             'transaction_date' => now(),
             'security_deposit_refunded' => $refund,
             'damage_charge' => $damageCharge,
-            'remarks' => "Returned {$quantity} piece(s) from customer",
+            'remarks' => "Returned {$quantity} piece(s) from customer" . ($condition ? " ({$condition})" : ''),
             'reference_document' => $reference,
         ]);
 

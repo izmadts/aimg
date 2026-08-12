@@ -297,6 +297,7 @@ class CylinderController extends Controller
         $request->validate([
             'cylinder_id' => 'required|exists:cylinders,id',
             'customer_id' => 'required|exists:customers,id',
+            'quantity' => 'nullable|integer|min:1',
             'damage_charge' => 'nullable|numeric|min:0',
             'security_deposit_refund' => 'nullable|numeric|min:0',
             'cylinder_condition' => 'required|in:good,damaged,expired',
@@ -306,18 +307,21 @@ class CylinderController extends Controller
         $cylinder = Cylinder::find($request->cylinder_id);
 
         try {
-            $cylinder->returnFromCustomer(
-                $request->customer_id,
-                1,
-                $request->damage_charge ?? 0,
-                $request->security_deposit_refund ?? 0,
-                $request->notes
-            );
+            DB::transaction(function () use ($request, $cylinder) {
+                $cylinder->returnFromCustomer(
+                    $request->customer_id,
+                    $request->quantity ?? 1,
+                    $request->damage_charge ?? 0,
+                    $request->security_deposit_refund ?? 0,
+                    $request->notes,
+                    $request->cylinder_condition
+                );
+            });
 
             return response()->json([
                 'success' => true,
                 'message' => "Cylinder returned successfully!",
-                'available_quantity' => $cylinder->available_quantity
+                'available_quantity' => $cylinder->fresh()->available_quantity
             ]);
 
         } catch (\Exception $e) {

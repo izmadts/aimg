@@ -42,9 +42,14 @@ class StorePurchaseRequest extends FormRequest
     {
         $validator->after(function (Validator $validator) {
             $items = $this->input('items', []);
+            $purchaseType = $this->input('purchase_type');
             $subtotal = 0;
             $cylinderTotal = 0;
             $returnDemand = [];
+            $anyGas = false;
+            $anyCylinder = false;
+            $anyCylinderPurchase = false;
+            $anyCylinderExchange = false;
 
             foreach ($items as $index => $item) {
                 $hasGas = !empty($item['gas_product_id']);
@@ -53,6 +58,13 @@ class StorePurchaseRequest extends FormRequest
                 if (!$hasGas && !$hasCylinder) {
                     $validator->errors()->add("items.$index", 'Each line must have a gas product, a cylinder, or both.');
                     continue;
+                }
+
+                if ($hasGas) $anyGas = true;
+                if ($hasCylinder) {
+                    $anyCylinder = true;
+                    if (($item['cylinder_action'] ?? null) === 'purchase') $anyCylinderPurchase = true;
+                    if (($item['cylinder_action'] ?? null) === 'exchange') $anyCylinderExchange = true;
                 }
 
                 if ($hasGas) {
@@ -87,6 +99,35 @@ class StorePurchaseRequest extends FormRequest
                 if ($cylinder && $quantity > $cylinder->stock_quantity) {
                     $validator->errors()->add('items', "Cannot return {$quantity} of {$cylinder->cylinder_number} to the supplier: only {$cylinder->stock_quantity} in stock.");
                 }
+            }
+
+            switch ($purchaseType) {
+                case 'gas_only':
+                    if ($anyCylinder) {
+                        $validator->errors()->add('purchase_type', 'Purchase type is "Gas Only" but this purchase has cylinder lines. Remove them or change the purchase type.');
+                    }
+                    if (!$anyGas) {
+                        $validator->errors()->add('purchase_type', 'Purchase type is "Gas Only" but no gas line was added.');
+                    }
+                    break;
+                case 'cylinder_only':
+                    if ($anyGas) {
+                        $validator->errors()->add('purchase_type', 'Purchase type is "Cylinder Only" but this purchase has gas lines. Remove them or change the purchase type.');
+                    }
+                    if (!$anyCylinder) {
+                        $validator->errors()->add('purchase_type', 'Purchase type is "Cylinder Only" but no cylinder line was added.');
+                    }
+                    break;
+                case 'gas_with_cylinder':
+                    if (!$anyGas || !$anyCylinderPurchase) {
+                        $validator->errors()->add('purchase_type', 'Purchase type is "Gas with Cylinder" but needs at least one gas line and one cylinder line with action "Purchase".');
+                    }
+                    break;
+                case 'exchange':
+                    if (!$anyCylinderExchange) {
+                        $validator->errors()->add('purchase_type', 'Purchase type is "Exchange" but no cylinder line with action "Exchange" was added.');
+                    }
+                    break;
             }
 
             $discount = (float) $this->input('discount', 0);
