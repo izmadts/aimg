@@ -30,6 +30,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/refresh', [DashboardController::class, 'refresh'])->name('dashboard.refresh');
 
+    // Help / User Guide (every authenticated user)
+    Route::view('/help', 'help.index')->name('help.index');
+
     // Profile Routes (every authenticated user manages their own profile)
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');

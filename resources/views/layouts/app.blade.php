@@ -48,10 +48,38 @@
                 position: relative;
                 width: 280px;
                 box-shadow: 2px 0 8px rgba(0, 0, 0, 0.06);
+                transition: width 0.2s ease-in-out;
             }
-            
+
             .sidebar-overlay {
                 display: none !important;
+            }
+
+            /* Collapsed: icon-only rail. Labels/badges/section headers hide;
+               each link keeps its text as a title attribute for a native tooltip. */
+            .sidebar.collapsed {
+                width: 80px;
+            }
+
+            .sidebar.collapsed .logo-text,
+            .sidebar.collapsed .user-info-text,
+            .sidebar.collapsed .nav-section-label,
+            .sidebar.collapsed .nav-link span {
+                display: none;
+            }
+
+            .sidebar.collapsed .nav-link {
+                justify-content: center;
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+
+            .sidebar.collapsed .flex.items-center.justify-between.px-6 {
+                justify-content: center;
+            }
+
+            .sidebar.collapsed .flex.items-center.space-x-3 {
+                justify-content: center;
             }
         }
 

@@ -4,36 +4,39 @@
 
 <aside id="sidebar" class="sidebar">
     <div class="flex flex-col h-full">
-        
+
         <!-- Logo -->
         <div class="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600">
             <div class="flex items-center space-x-3">
                 <div class="bg-white/20 rounded-lg p-2">
-                    <i class="fas fa-cylinder text-white text-xl"></i>
+                    <i class="fas fa-gas-pump text-white text-xl"></i>
                 </div>
-                <div>
+                <div class="logo-text">
                     <h1 class="text-white font-bold text-lg leading-tight">ERP System</h1>
                     <p class="text-blue-100 text-xs">Medical Gas</p>
                 </div>
             </div>
+            <button type="button" onclick="toggleSidebarCollapse()" class="hidden lg:block text-white hover:text-blue-100" title="Collapse sidebar">
+                <i id="sidebarCollapseIcon" class="fas fa-angle-left text-xl"></i>
+            </button>
             <button type="button" onclick="closeSidebar()" class="lg:hidden text-white hover:text-blue-100">
                 <i class="fas fa-times text-xl"></i>
             </button>
         </div>
-        
+
         <!-- User Info -->
         <div class="px-4 py-4 border-b border-gray-200 bg-gray-50">
             <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                     {{ Auth::user()->initials ?? 'U' }}
                 </div>
-                <div class="flex-1 min-w-0">
+                <div class="flex-1 min-w-0 user-info-text">
                     <p class="text-sm font-semibold text-gray-900 truncate">{{ Auth::user()->name }}</p>
                     <p class="text-xs text-gray-500 truncate">{{ Auth::user()->email }}</p>
                 </div>
             </div>
         </div>
-        
+
         <!-- Navigation -->
         <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             
@@ -45,7 +48,7 @@
             </a>
 
             @canany(['sales.view', 'purchases.view', 'gas_products.view', 'cylinders.view'])
-            <p class="px-4 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Operations</p>
+            <p class="nav-section-label px-4 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Operations</p>
             @endcanany
 
             @can('sales.view')
@@ -117,7 +120,7 @@
             @endcan
 
             @canany(['customers.view', 'suppliers.view'])
-            <p class="px-4 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Parties</p>
+            <p class="nav-section-label px-4 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Parties</p>
             @endcanany
 
             @can('customers.view')
@@ -141,7 +144,7 @@
             @endcan
 
             @canany(['accounting.view', 'income_expense.view'])
-            <p class="px-4 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Finance</p>
+            <p class="nav-section-label px-4 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Finance</p>
             @endcanany
 
             @can('accounting.view')
@@ -170,7 +173,7 @@
             @endcan
 
             @can('hrm.view')
-            <p class="px-4 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Human Resources</p>
+            <p class="nav-section-label px-4 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Human Resources</p>
             <!-- HRM -->
                 <a href="{{ route('hrm.employees') }}"
                    class="nav-link {{ Str::startsWith($currentRoute, 'hrm.') ? 'active' : '' }}">
@@ -180,7 +183,7 @@
             @endcan
 
             @canany(['users.manage', 'roles.manage', 'units.manage', 'cylinder_types.manage', 'settings.manage'])
-            <p class="px-4 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Administration</p>
+            <p class="nav-section-label px-4 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Administration</p>
             @endcanany
 
             @can('users.manage')
@@ -233,13 +236,20 @@
             <!-- Divider -->
             <div class="border-t border-gray-200 my-4"></div>
 
+            <!-- Help -->
+            <a href="{{ route('help.index') }}"
+               class="nav-link {{ Str::startsWith($currentRoute, 'help.') ? 'active' : '' }}">
+                <i class="fas fa-circle-question"></i>
+                <span>Help / User Guide</span>
+            </a>
+
             <!-- Settings (personal account) -->
             <a href="{{ route('profile.index') }}"
                class="nav-link {{ Str::startsWith($currentRoute, 'profile.') ? 'active' : '' }}">
                 <i class="fas fa-cog"></i>
                 <span>My Account</span>
             </a>
-            
+
             <!-- Logout -->
             <form method="POST" action="{{ route('logout') }}" class="mt-2">
                 @csrf
@@ -258,3 +268,34 @@
         </div>
     </div>
 </aside>
+
+@push('scripts')
+<script>
+    (function () {
+        const sidebar = document.getElementById('sidebar');
+        const icon = document.getElementById('sidebarCollapseIcon');
+
+        function applyTooltips() {
+            sidebar.querySelectorAll('.nav-link').forEach(function (link) {
+                if (link.hasAttribute('title')) return;
+                const label = link.querySelector('span:not(.badge)');
+                if (label) link.setAttribute('title', label.textContent.trim());
+            });
+        }
+
+        function setCollapsed(collapsed) {
+            sidebar.classList.toggle('collapsed', collapsed);
+            if (icon) icon.classList.toggle('fa-angle-left', !collapsed);
+            if (icon) icon.classList.toggle('fa-angle-right', collapsed);
+            localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
+        }
+
+        window.toggleSidebarCollapse = function () {
+            setCollapsed(!sidebar.classList.contains('collapsed'));
+        };
+
+        applyTooltips();
+        setCollapsed(window.innerWidth >= 1024 && localStorage.getItem('sidebarCollapsed') === '1');
+    })();
+</script>
+@endpush
