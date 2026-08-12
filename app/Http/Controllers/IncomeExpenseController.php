@@ -3,66 +3,66 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
-use App\Models\Transaction;
+use App\Models\AccountingEntry;
+use App\Http\Requests\StoreIncomeExpenseRequest;
+use App\Services\AccountingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class IncomeExpenseController extends Controller
 {
+    protected $accountingService;
+
+    public function __construct(AccountingService $accountingService)
+    {
+        $this->accountingService = $accountingService;
+    }
+
     /**
      * Display income/expense dashboard.
      */
     public function index(Request $request)
     {
-        // Get date range
         $startDate = $request->filled('start_date') ? $request->start_date : now()->startOfMonth()->format('Y-m-d');
         $endDate = $request->filled('end_date') ? $request->end_date : now()->format('Y-m-d');
 
-        // Get income accounts
         $incomeAccounts = Account::income()->active()->get();
         $expenseAccounts = Account::expense()->active()->get();
 
-        // Get income transactions
-        $incomeTransactions = Transaction::income()
+        $incomeEntries = AccountingEntry::approved()
+            ->whereHas('account', fn ($q) => $q->where('account_type', 'income'))
             ->whereBetween('date', [$startDate, $endDate])
-            ->where('status', 'approved')
             ->with(['account', 'oppositeAccount'])
             ->get();
 
-        // Get expense transactions
-        $expenseTransactions = Transaction::expense()
+        $expenseEntries = AccountingEntry::approved()
+            ->whereHas('account', fn ($q) => $q->where('account_type', 'expense'))
             ->whereBetween('date', [$startDate, $endDate])
-            ->where('status', 'approved')
             ->with(['account', 'oppositeAccount'])
             ->get();
 
-        // ✅ Calculate totals using debit/credit
-        $totalIncome = $incomeTransactions->sum('debit'); // Income has debit
-        $totalExpense = $expenseTransactions->sum('credit'); // Expense has credit
+        $totalIncome = $incomeEntries->sum('credit');
+        $totalExpense = $expenseEntries->sum('debit');
         $netProfit = $totalIncome - $totalExpense;
 
-        // Income by account
-        $incomeByAccount = $incomeTransactions->groupBy('account_id')->map(function ($items) {
+        $incomeByAccount = $incomeEntries->groupBy('account_id')->map(function ($items) {
             return [
                 'account' => $items->first()->account,
-                'total' => $items->sum('debit') // ✅ Use debit
+                'total' => $items->sum('credit'),
             ];
         });
 
-        // Expense by account
-        $expenseByAccount = $expenseTransactions->groupBy('account_id')->map(function ($items) {
+        $expenseByAccount = $expenseEntries->groupBy('account_id')->map(function ($items) {
             return [
                 'account' => $items->first()->account,
-                'total' => $items->sum('credit') // ✅ Use credit
+                'total' => $items->sum('debit'),
             ];
         });
 
-        // Monthly summary
         $monthlySummary = $this->getMonthlySummary($startDate, $endDate);
 
-        // Recent transactions
-        $recentTransactions = Transaction::whereIn('transaction_type', ['income', 'expense'])
-            ->where('status', 'approved')
+        $recentTransactions = AccountingEntry::approved()
+            ->whereIn('transaction_type', ['income', 'expense'])
             ->with(['account', 'oppositeAccount', 'creator'])
             ->latest()
             ->limit(20)
@@ -71,8 +71,6 @@ class IncomeExpenseController extends Controller
         return view('income-expense.index', compact(
             'incomeAccounts',
             'expenseAccounts',
-            'incomeTransactions',
-            'expenseTransactions',
             'totalIncome',
             'totalExpense',
             'netProfit',
@@ -91,8 +89,7 @@ class IncomeExpenseController extends Controller
     public function createIncome()
     {
         $accounts = Account::income()->active()->get();
-        $bankAccounts = Account::asset()->active()->get();
-        return view('income-expense.create-income', compact('accounts', 'bankAccounts'));
+        return view('income-expense.create-income', compact('accounts'));
     }
 
     /**
@@ -101,48 +98,26 @@ class IncomeExpenseController extends Controller
     public function createExpense()
     {
         $accounts = Account::expense()->active()->get();
-        $bankAccounts = Account::asset()->active()->get();
-        return view('income-expense.create-expense', compact('accounts', 'bankAccounts'));
+        return view('income-expense.create-expense', compact('accounts'));
     }
 
     /**
      * Store income transaction.
      */
-    public function storeIncome(Request $request)
+    public function storeIncome(StoreIncomeExpenseRequest $request)
     {
-        $validated = $request->validate([
-            'account_id' => 'required|exists:accounts,id',
-            'opposite_account_id' => 'required|exists:accounts,id',
-            'date' => 'required|date',
-            'amount' => 'required|numeric|min:0.01',
-            'description' => 'required|string|max:500',
-            'reference_no' => 'nullable|string|max:100',
-            'notes' => 'nullable|string|max:500'
-        ]);
+        $validated = $request->validated();
+        $account = Account::findOrFail($validated['account_id']);
 
-        DB::transaction(function () use ($validated) {
-            // Create transaction - Income = Debit
-            $transaction = Transaction::create([
-                'transaction_no' => Transaction::generateTransactionNo('income'),
-                'transaction_type' => 'income',
-                'account_id' => $validated['account_id'],
-                'opposite_account_id' => $validated['opposite_account_id'],
-                'date' => $validated['date'],
-                'debit' => $validated['amount'],  // ✅ Income = Debit
-                'credit' => 0,
-                'description' => $validated['description'],
-                'reference_no' => $validated['reference_no'],
-                'notes' => $validated['notes'],
-                'created_by' => auth()->id(),
-                'status' => 'approved'
-            ]);
-
-            // Update account balances
-            $account = Account::find($validated['account_id']);
-            $account->updateBalance();
-
-            $oppositeAccount = Account::find($validated['opposite_account_id']);
-            $oppositeAccount->updateBalance();
+        DB::transaction(function () use ($validated, $account) {
+            $this->accountingService->recordIncome(
+                $account->account_code,
+                (float) $validated['amount'],
+                $validated['description'],
+                null,
+                $validated['payment_method'],
+                $validated['date']
+            );
         });
 
         return redirect()->route('income-expense.index')
@@ -152,41 +127,20 @@ class IncomeExpenseController extends Controller
     /**
      * Store expense transaction.
      */
-    public function storeExpense(Request $request)
+    public function storeExpense(StoreIncomeExpenseRequest $request)
     {
-        $validated = $request->validate([
-            'account_id' => 'required|exists:accounts,id',
-            'opposite_account_id' => 'required|exists:accounts,id',
-            'date' => 'required|date',
-            'amount' => 'required|numeric|min:0.01',
-            'description' => 'required|string|max:500',
-            'reference_no' => 'nullable|string|max:100',
-            'notes' => 'nullable|string|max:500'
-        ]);
+        $validated = $request->validated();
+        $account = Account::findOrFail($validated['account_id']);
 
-        DB::transaction(function () use ($validated) {
-            // Create transaction - Expense = Credit
-            $transaction = Transaction::create([
-                'transaction_no' => Transaction::generateTransactionNo('expense'),
-                'transaction_type' => 'expense',
-                'account_id' => $validated['account_id'],
-                'opposite_account_id' => $validated['opposite_account_id'],
-                'date' => $validated['date'],
-                'debit' => 0,
-                'credit' => $validated['amount'], // ✅ Expense = Credit
-                'description' => $validated['description'],
-                'reference_no' => $validated['reference_no'],
-                'notes' => $validated['notes'],
-                'created_by' => auth()->id(),
-                'status' => 'approved'
-            ]);
-
-            // Update account balances
-            $account = Account::find($validated['account_id']);
-            $account->updateBalance();
-
-            $oppositeAccount = Account::find($validated['opposite_account_id']);
-            $oppositeAccount->updateBalance();
+        DB::transaction(function () use ($validated, $account) {
+            $this->accountingService->recordExpense(
+                $account->account_code,
+                (float) $validated['amount'],
+                $validated['description'],
+                null,
+                $validated['payment_method'],
+                $validated['date']
+            );
         });
 
         return redirect()->route('income-expense.index')
@@ -206,22 +160,13 @@ class IncomeExpenseController extends Controller
             $monthStart = $start->copy()->startOfMonth();
             $monthEnd = $start->copy()->endOfMonth();
 
-            // ✅ Income = sum of debit, Expense = sum of credit
-            $income = Transaction::income()
-                ->whereBetween('date', [$monthStart, $monthEnd])
-                ->where('status', 'approved')
-                ->sum('debit');
-
-            $expense = Transaction::expense()
-                ->whereBetween('date', [$monthStart, $monthEnd])
-                ->where('status', 'approved')
-                ->sum('credit');
+            $statement = $this->accountingService->getIncomeStatement($monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d'));
 
             $months->push([
                 'month' => $start->format('M Y'),
-                'income' => $income,
-                'expense' => $expense,
-                'profit' => $income - $expense
+                'income' => $statement->total_income,
+                'expense' => $statement->total_expense,
+                'profit' => $statement->net_profit
             ]);
 
             $start->addMonth();
@@ -238,15 +183,15 @@ class IncomeExpenseController extends Controller
         $startDate = $request->filled('start_date') ? $request->start_date : now()->startOfMonth()->format('Y-m-d');
         $endDate = $request->filled('end_date') ? $request->end_date : now()->format('Y-m-d');
 
-        $incomeTransactions = Transaction::income()
+        $incomeTransactions = AccountingEntry::approved()
+            ->whereHas('account', fn ($q) => $q->where('account_type', 'income'))
             ->whereBetween('date', [$startDate, $endDate])
-            ->where('status', 'approved')
             ->with(['account', 'oppositeAccount', 'creator'])
             ->get();
 
-        $expenseTransactions = Transaction::expense()
+        $expenseTransactions = AccountingEntry::approved()
+            ->whereHas('account', fn ($q) => $q->where('account_type', 'expense'))
             ->whereBetween('date', [$startDate, $endDate])
-            ->where('status', 'approved')
             ->with(['account', 'oppositeAccount', 'creator'])
             ->get();
 
@@ -270,21 +215,12 @@ class IncomeExpenseController extends Controller
             $startDate = now()->setDate($year, $month, 1)->startOfMonth();
             $endDate = now()->setDate($year, $month, 1)->endOfMonth();
 
-            // ✅ Income = sum of debit, Expense = sum of credit
-            $income = Transaction::income()
-                ->whereBetween('date', [$startDate, $endDate])
-                ->where('status', 'approved')
-                ->sum('debit');
-
-            $expense = Transaction::expense()
-                ->whereBetween('date', [$startDate, $endDate])
-                ->where('status', 'approved')
-                ->sum('credit');
+            $statement = $this->accountingService->getIncomeStatement($startDate->format('Y-m-d'), $endDate->format('Y-m-d'));
 
             $data[] = [
                 'month' => $startDate->format('M'),
-                'income' => $income,
-                'expense' => $expense
+                'income' => $statement->total_income,
+                'expense' => $statement->total_expense
             ];
         }
 

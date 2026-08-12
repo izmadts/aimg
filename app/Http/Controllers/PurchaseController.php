@@ -6,12 +6,11 @@ use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\GasProduct;
 use App\Models\Cylinder;
-use App\Models\Account;
-use App\Models\AccountingEntry;
+use App\Models\SupplierCylinderTransaction;
+use App\Http\Requests\StorePurchaseRequest;
 use App\Services\AccountingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class PurchaseController extends Controller
 {
@@ -27,7 +26,7 @@ class PurchaseController extends Controller
     // ============================================
     public function index(Request $request)
     {
-        $query = Purchase::with(['supplier', 'gasProduct', 'cylinder']);
+        $query = Purchase::with(['supplier']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -66,200 +65,151 @@ class PurchaseController extends Controller
     {
         $suppliers = Supplier::where('is_active', true)->get();
         $gasProducts = GasProduct::where('is_active', true)->get();
-        $cylinders = Cylinder::where('stock_quantity', '>', 0)
-            ->with('gasProduct')
-            ->get();
-        $accounts = Account::where('is_active', true)->orderBy('account_code')->get();
+        $cylinders = Cylinder::with('gasProduct')->get();
 
-        return view('purchases.create', compact('suppliers', 'gasProducts', 'cylinders', 'accounts'));
+        return view('purchases.create', compact('suppliers', 'gasProducts', 'cylinders'));
     }
 
     // ============================================
     // STORE - Save Purchase
     // ============================================
-
-    public function store(Request $request)
-{
-    $validated = $request->validate([
-        'supplier_id' => 'required|exists:suppliers,id',
-        'date' => 'required|date',
-        'purchase_type' => 'required|in:gas_only,gas_with_cylinder,cylinder_only,exchange',
-        'gas_product_id' => 'nullable|exists:gas_products,id',
-        'gas_quantity' => 'nullable|numeric|min:0',
-        'gas_price' => 'nullable|numeric|min:0',
-        'cylinder_id' => 'nullable|exists:cylinders,id',
-        'cylinder_quantity' => 'nullable|integer|min:0',
-        'cylinder_purchase_price' => 'nullable|numeric|min:0',
-        'cylinder_sale_price' => 'nullable|numeric|min:0',
-        'discount' => 'nullable|numeric|min:0',
-        'tax' => 'nullable|numeric|min:0',
-        'amount_paid' => 'nullable|numeric|min:0',
-        'debit_account_id' => 'required|exists:accounts,id',
-        'credit_account_id' => 'required|exists:accounts,id',
-        'notes' => 'nullable|string'
-    ]);
-
-    // Validate debit and credit accounts are not same
-    if ($validated['debit_account_id'] == $validated['credit_account_id']) {
-        return redirect()->back()
-            ->with('error', 'Debit and Credit accounts cannot be the same.')
-            ->withInput();
-    }
-
-    // ✅ Calculate totals
-    $validated['gas_total'] = ($validated['gas_quantity'] ?? 0) * ($validated['gas_price'] ?? 0);
-    $validated['cylinder_total'] = ($validated['cylinder_quantity'] ?? 0) * ($validated['cylinder_purchase_price'] ?? 0);
-    $validated['subtotal'] = $validated['gas_total'] + $validated['cylinder_total'];
-    $validated['grand_total'] = $validated['subtotal'] - ($validated['discount'] ?? 0) + ($validated['tax'] ?? 0);
-    $validated['balance_due'] = $validated['grand_total'] - ($validated['amount_paid'] ?? 0);
-    $validated['payment_status'] = $this->getPaymentStatus($validated['grand_total'], $validated['amount_paid'] ?? 0);
-    $validated['status'] = 'confirmed';
-    $validated['created_by'] = auth()->id();
-
-    DB::transaction(function () use ($validated) {
-        $purchase = Purchase::create($validated);
-
-        // ✅ Update gas stock
-        if ($validated['gas_product_id'] && $validated['gas_quantity'] > 0) {
-            $gasProduct = GasProduct::find($validated['gas_product_id']);
-            if ($gasProduct) {
-                $gasProduct->increment('current_stock', $validated['gas_quantity']);
-            }
-        }
-
-        // ✅ Update cylinder stock
-        if ($validated['cylinder_id'] && $validated['cylinder_quantity'] > 0) {
-            $cylinder = Cylinder::find($validated['cylinder_id']);
-            if ($cylinder) {
-                $cylinder->increment('stock_quantity', $validated['cylinder_quantity']);
-                if ($validated['cylinder_sale_price'] > 0) {
-                    $cylinder->update(['sale_price' => $validated['cylinder_sale_price']]);
-                }
-                $cylinder->updateStatus();
-            }
-        }
-
-        // ✅ Auto Accounting
-        $this->recordAccounting($purchase, $validated);
-
-        // ✅ Update supplier balance
-        $supplier = Supplier::find($validated['supplier_id']);
-        if ($supplier) {
-            $supplier->increment('opening_balance', $purchase->balance_due);
-        }
-    });
-
-    return redirect()->route('purchases.index')
-        ->with('success', 'Purchase created successfully!');
-}
-
-    /*public function store(Request $request)
+    public function store(StorePurchaseRequest $request)
     {
-        $validated = $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
-            'date' => 'required|date',
-            'purchase_type' => 'required|in:gas_only,gas_with_cylinder,cylinder_only,exchange',
-            'gas_product_id' => 'nullable|exists:gas_products,id',
-            'gas_quantity' => 'nullable|numeric|min:0',
-            'gas_price' => 'nullable|numeric|min:0',
-            'cylinder_id' => 'nullable|exists:cylinders,id',
-            'cylinder_quantity' => 'nullable|integer|min:0',
-            'cylinder_purchase_price' => 'nullable|numeric|min:0',
-            'cylinder_sale_price' => 'nullable|numeric|min:0',
-            'discount' => 'nullable|numeric|min:0',
-            'tax' => 'nullable|numeric|min:0',
-            'amount_paid' => 'nullable|numeric|min:0',
-            'debit_account_id' => 'required|exists:accounts,id',
-            'credit_account_id' => 'required|exists:accounts,id',
-            'notes' => 'nullable|string'
-        ]);
+        $validated = $request->validated();
 
-        $validated['gas_total'] = ($validated['gas_quantity'] ?? 0) * ($validated['gas_price'] ?? 0);
-        $validated['cylinder_total'] = ($validated['cylinder_quantity'] ?? 0) * ($validated['cylinder_purchase_price'] ?? 0);
-        $validated['subtotal'] = $validated['gas_total'] + $validated['cylinder_total'];
-        $validated['grand_total'] = $validated['subtotal'] - ($validated['discount'] ?? 0) + ($validated['tax'] ?? 0);
-        $validated['balance_due'] = $validated['grand_total'] - ($validated['amount_paid'] ?? 0);
-        $validated['payment_status'] = $this->getPaymentStatus($validated['grand_total'], $validated['amount_paid'] ?? 0);
-        $validated['status'] = 'confirmed';
-        $validated['created_by'] = auth()->id();
+        $purchase = DB::transaction(function () use ($validated) {
+            $purchase = Purchase::create([
+                'supplier_id' => $validated['supplier_id'],
+                'date' => $validated['date'],
+                'delivery_date' => $validated['delivery_date'] ?? null,
+                'purchase_type' => $validated['purchase_type'],
+                'discount' => $validated['discount'] ?? 0,
+                'tax' => $validated['tax'] ?? 0,
+                'amount_paid' => $validated['amount_paid'] ?? 0,
+                'payment_method' => $validated['payment_method'],
+                'status' => 'confirmed',
+                'reference_no' => $validated['reference_no'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+            ]);
 
-        DB::transaction(function () use ($validated) {
-            $purchase = Purchase::create($validated);
+            $returnCredits = [];
 
-            // Update gas stock
-            if ($validated['gas_product_id'] && $validated['gas_quantity'] > 0) {
-                $gasProduct = GasProduct::find($validated['gas_product_id']);
-                if ($gasProduct) {
-                    $gasProduct->increment('current_stock', $validated['gas_quantity']);
-                }
+            foreach ($validated['items'] as $itemData) {
+                $purchase->items()->create($this->buildPurchaseItemFields($purchase, $itemData, $returnCredits));
             }
 
-            // Update cylinder stock
-            if ($validated['cylinder_id'] && $validated['cylinder_quantity'] > 0) {
-                $cylinder = Cylinder::find($validated['cylinder_id']);
-                if ($cylinder) {
-                    $cylinder->increment('stock_quantity', $validated['cylinder_quantity']);
-                    if ($validated['cylinder_sale_price'] > 0) {
-                        $cylinder->update(['sale_price' => $validated['cylinder_sale_price']]);
-                    }
-                    $cylinder->updateStatus();
-                }
+            $purchase->calculateTotals();
+            $purchase->updatePaymentStatus();
+
+            $supplier = Supplier::find($purchase->supplier_id);
+            $supplier?->increment('opening_balance', $purchase->balance_due);
+
+            $this->accountingService->recordPurchase($purchase);
+
+            foreach ($returnCredits as $credit) {
+                $this->accountingService->recordCylinderReturnToSupplier($purchase, $credit, $validated['payment_method']);
             }
 
-            // Auto Accounting
-            $this->recordAccounting($purchase, $validated);
-
-            // Update supplier balance
-            $supplier = Supplier::find($validated['supplier_id']);
-            if ($supplier) {
-                $supplier->increment('opening_balance', $purchase->balance_due);
-            }
+            return $purchase;
         });
 
         return redirect()->route('purchases.index')
-            ->with('success', 'Purchase created successfully!');
-    }*/
+            ->with('success', "Purchase {$purchase->purchase_invoice_no} created successfully!");
+    }
+
+    /**
+     * Apply a purchase line item's stock effects and return the attributes to save on it.
+     * Any credit owed back for a supplier return is appended to $returnCredits by reference.
+     */
+    private function buildPurchaseItemFields(Purchase $purchase, array $itemData, array &$returnCredits): array
+    {
+        $fields = [
+            'notes' => $itemData['notes'] ?? null,
+            'gas_total' => 0,
+            'cylinder_total' => 0,
+        ];
+
+        if (!empty($itemData['gas_product_id'])) {
+            $gasProduct = GasProduct::where('id', $itemData['gas_product_id'])->lockForUpdate()->first();
+            $gasProduct->increment('current_stock', $itemData['gas_quantity']);
+
+            $fields['gas_product_id'] = $itemData['gas_product_id'];
+            $fields['gas_quantity'] = $itemData['gas_quantity'];
+            $fields['gas_price'] = $itemData['gas_price'];
+            $fields['gas_total'] = round($itemData['gas_quantity'] * $itemData['gas_price'], 2);
+        }
+
+        if (!empty($itemData['cylinder_id'])) {
+            $cylinder = Cylinder::findOrFail($itemData['cylinder_id']);
+            $quantity = (int) $itemData['cylinder_quantity'];
+            $unitPrice = (float) ($itemData['cylinder_unit_price'] ?? 0);
+            $action = $itemData['cylinder_action'];
+            $lineTotal = 0;
+
+            if ($action === 'purchase') {
+                $cylinder->addStock($quantity);
+                $lineTotal = round($quantity * $unitPrice, 2);
+                if ($unitPrice > 0) {
+                    $cylinder->update(['purchase_price' => $unitPrice]);
+                }
+                $this->logSupplierCylinderTransaction($purchase, $cylinder, 'purchased_new', $quantity, $unitPrice * $quantity);
+            } elseif ($action === 'exchange') {
+                $this->logSupplierCylinderTransaction($purchase, $cylinder, 'exchanged', $quantity, 0);
+            } elseif ($action === 'return_to_supplier') {
+                $cylinder->removeStock($quantity);
+                $creditAmount = round($quantity * $unitPrice, 2);
+                $returnCredits[] = $creditAmount;
+                $this->logSupplierCylinderTransaction($purchase, $cylinder, 'returned_empty', $quantity, $creditAmount);
+            }
+
+            $fields['cylinder_id'] = $itemData['cylinder_id'];
+            $fields['cylinder_action'] = $action;
+            $fields['cylinder_quantity'] = $quantity;
+            $fields['cylinder_unit_price'] = $unitPrice;
+            $fields['cylinder_total'] = $lineTotal;
+        }
+
+        return $fields;
+    }
+
+    private function logSupplierCylinderTransaction(Purchase $purchase, Cylinder $cylinder, string $type, int $quantity, float $depositAdjustment): void
+    {
+        SupplierCylinderTransaction::create([
+            'supplier_id' => $purchase->supplier_id,
+            'cylinder_id' => $cylinder->id,
+            'purchase_id' => $purchase->id,
+            'user_id' => auth()->id(),
+            'transaction_type' => $type,
+            'transaction_date' => $purchase->date,
+            'deposit_adjustment' => $depositAdjustment,
+            'reference_document' => $purchase->purchase_invoice_no,
+            'remarks' => "{$quantity} piece(s) via {$purchase->purchase_invoice_no}",
+        ]);
+    }
 
     // ============================================
     // SHOW - View Purchase
     // ============================================
-    /*public function show(Purchase $purchase)
+    public function show(Purchase $purchase)
     {
-        $purchase->load(['supplier', 'gasProduct', 'cylinder', 'creator', 'debitAccount', 'creditAccount']);
+        $purchase->load([
+            'supplier',
+            'items.gasProduct',
+            'items.cylinder',
+            'creator',
+            'payments',
+        ]);
 
-        $journalEntries = $purchase->journalEntries()
+        $accountingEntries = $purchase->accountingEntries()
             ->with(['account', 'oppositeAccount'])
             ->get();
 
-        return view('purchases.show', compact('purchase', 'journalEntries'));
-    }*/
+        $cylinderTransactions = $purchase->cylinderTransactions()
+            ->with(['cylinder', 'supplier'])
+            ->get();
 
-    /**
- * Display the specified purchase.
- */
-public function show(Purchase $purchase)
-{
-    $purchase->load([
-        'supplier', 
-        'gasProduct', 
-        'cylinder', 
-        'creator', 
-        'debitAccount', 
-        'creditAccount',
-        'payments'  // ✅ Load payments
-    ]);
-
-    $journalEntries = $purchase->journalEntries()
-        ->with(['account', 'oppositeAccount'])
-        ->get();
-
-    // ✅ Get cylinder transactions (if any)
-    $cylinderTransactions = $purchase->cylinderTransactions()
-        ->with(['cylinder', 'supplier'])
-        ->get();
-
-    return view('purchases.show', compact('purchase', 'journalEntries', 'cylinderTransactions'));
-}
+        return view('purchases.show', compact('purchase', 'accountingEntries', 'cylinderTransactions'));
+    }
 
     // ============================================
     // EDIT - Show Edit Form
@@ -273,12 +223,9 @@ public function show(Purchase $purchase)
 
         $suppliers = Supplier::where('is_active', true)->get();
         $gasProducts = GasProduct::where('is_active', true)->get();
-        $cylinders = Cylinder::where('stock_quantity', '>', 0)
-            ->with('gasProduct')
-            ->get();
-        $accounts = Account::where('is_active', true)->orderBy('account_code')->get();
+        $cylinders = Cylinder::with('gasProduct')->get();
 
-        return view('purchases.edit', compact('purchase', 'suppliers', 'gasProducts', 'cylinders', 'accounts'));
+        return view('purchases.edit', compact('purchase', 'suppliers', 'gasProducts', 'cylinders'));
     }
 
     // ============================================
@@ -291,295 +238,122 @@ public function show(Purchase $purchase)
                 ->with('error', 'Only draft purchases can be updated.');
         }
 
-        $validated = $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
-            'date' => 'required|date',
-            'purchase_type' => 'required|in:gas_only,gas_with_cylinder,cylinder_only,exchange',
-            'gas_product_id' => 'nullable|exists:gas_products,id',
-            'gas_quantity' => 'nullable|numeric|min:0',
-            'gas_price' => 'nullable|numeric|min:0',
-            'cylinder_id' => 'nullable|exists:cylinders,id',
-            'cylinder_quantity' => 'nullable|integer|min:0',
-            'cylinder_purchase_price' => 'nullable|numeric|min:0',
-            'cylinder_sale_price' => 'nullable|numeric|min:0',
-            'discount' => 'nullable|numeric|min:0',
-            'tax' => 'nullable|numeric|min:0',
-            'amount_paid' => 'nullable|numeric|min:0',
-            'debit_account_id' => 'required|exists:accounts,id',
-            'credit_account_id' => 'required|exists:accounts,id',
-            'notes' => 'nullable|string'
-        ]);
-
-        $validated['gas_total'] = ($validated['gas_quantity'] ?? 0) * ($validated['gas_price'] ?? 0);
-        $validated['cylinder_total'] = ($validated['cylinder_quantity'] ?? 0) * ($validated['cylinder_purchase_price'] ?? 0);
-        $validated['subtotal'] = $validated['gas_total'] + $validated['cylinder_total'];
-        $validated['grand_total'] = $validated['subtotal'] - ($validated['discount'] ?? 0) + ($validated['tax'] ?? 0);
-        $validated['balance_due'] = $validated['grand_total'] - ($validated['amount_paid'] ?? 0);
-        $validated['payment_status'] = $this->getPaymentStatus($validated['grand_total'], $validated['amount_paid'] ?? 0);
-
-        $purchase->update($validated);
-
         return redirect()->route('purchases.index')
             ->with('success', 'Purchase updated successfully!');
     }
 
     // ============================================
-    // DESTROY - Delete Purchase
+    // DESTROY - Cancel Purchase (reverses stock and accounting, never hard-deletes posted entries)
     // ============================================
     public function destroy(Purchase $purchase)
     {
-        if ($purchase->status !== 'draft') {
-            return redirect()->route('purchases.index')
-                ->with('error', 'Only draft purchases can be deleted.');
+        if ($purchase->status === 'cancelled') {
+            return redirect()->route('purchases.index')->with('error', 'Purchase is already cancelled.');
         }
 
-        $purchase->delete();
+        DB::transaction(function () use ($purchase) {
+            foreach ($purchase->items as $item) {
+                if ($item->gas_product_id && $item->gas_quantity > 0) {
+                    GasProduct::where('id', $item->gas_product_id)->decrement('current_stock', $item->gas_quantity);
+                }
+
+                if ($item->cylinder_id && $item->cylinder_quantity > 0) {
+                    $cylinder = Cylinder::find($item->cylinder_id);
+                    if ($cylinder) {
+                        if ($item->cylinder_action === 'purchase') {
+                            $cylinder->decrement('stock_quantity', $item->cylinder_quantity);
+                        } elseif ($item->cylinder_action === 'return_to_supplier') {
+                            $cylinder->increment('stock_quantity', $item->cylinder_quantity);
+                        }
+                        $cylinder->updateStatus();
+                    }
+                }
+            }
+
+            $this->accountingService->reverseEntries($purchase, 'purchase', "Cancelled purchase: {$purchase->purchase_invoice_no}");
+
+            $supplier = $purchase->supplier;
+            $supplier?->decrement('opening_balance', $purchase->balance_due);
+
+            $purchase->update(['status' => 'cancelled']);
+        });
 
         return redirect()->route('purchases.index')
-            ->with('success', 'Purchase deleted successfully!');
+            ->with('success', "Purchase {$purchase->purchase_invoice_no} cancelled and reversed successfully!");
+    }
+
+    // ============================================
+    // APPROVE / CANCEL
+    // ============================================
+    public function approve(Purchase $purchase)
+    {
+        $purchase->approve();
+
+        return redirect()->route('purchases.show', $purchase)
+            ->with('success', "Purchase {$purchase->purchase_invoice_no} approved.");
+    }
+
+    public function cancel(Purchase $purchase)
+    {
+        return $this->destroy($purchase);
     }
 
     // ============================================
     // RECORD PAYMENT
     // ============================================
-   /* public function recordPayment(Request $request, Purchase $purchase)
+    public function recordPayment(Request $request, Purchase $purchase)
     {
         $request->validate([
-            'payment_amount' => 'required|numeric|min:0.01|max:' . $purchase->balance_due,
+            'amount' => 'required|numeric|min:0.01|max:' . $purchase->balance_due,
             'payment_method' => 'required|in:cash,bank_transfer,cheque,online',
             'payment_date' => 'required|date',
-            'payment_notes' => 'nullable|string|max:500'
+            'notes' => 'nullable|string|max:500'
         ]);
 
-        DB::transaction(function () use ($request, $purchase) {
-            $purchase->amount_paid += $request->payment_amount;
-            $purchase->balance_due = $purchase->grand_total - $purchase->amount_paid;
-            $purchase->updatePaymentStatus();
-            $purchase->save();
+        try {
+            DB::transaction(function () use ($request, $purchase) {
+                $purchase->amount_paid += $request->amount;
+                $purchase->balance_due = $purchase->grand_total - $purchase->amount_paid;
+                $purchase->updatePaymentStatus();
+                $purchase->save();
 
-            // Update supplier balance
-            $supplier = $purchase->supplier;
-            if ($supplier) {
-                $supplier->decrement('opening_balance', $request->payment_amount);
-            }
-        });
+                $purchase->payments()->create([
+                    'amount' => $request->amount,
+                    'payment_method' => $request->payment_method,
+                    'payment_date' => $request->payment_date,
+                    'transaction_no' => 'PAY-PUR-' . time() . '-' . rand(100, 999),
+                    'notes' => $request->notes,
+                    'created_by' => auth()->id(),
+                    'status' => 'completed'
+                ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Payment recorded successfully!',
-            'balance_due' => $purchase->balance_due,
-            'payment_status' => $purchase->payment_status
-        ]);
-    }*/
+                $purchase->supplier?->decrement('opening_balance', $request->amount);
 
-    /**
- * Record Payment for Purchase
- */
-public function recordPayment(Request $request, Purchase $purchase)
-{
-    $request->validate([
-        'amount' => 'required|numeric|min:0.01|max:' . $purchase->balance_due,
-        'payment_method' => 'required|in:cash,bank_transfer,cheque,online',
-        'payment_date' => 'required|date',
-        'notes' => 'nullable|string|max:500'
-    ]);
+                $this->accountingService->recordPurchasePayment($purchase, (float) $request->amount, $request->payment_method, $request->payment_date);
+            });
 
-    try {
-        DB::transaction(function () use ($request, $purchase) {
-            // Update purchase
-            $purchase->amount_paid += $request->amount;
-            $purchase->balance_due = $purchase->grand_total - $purchase->amount_paid;
-            $purchase->updatePaymentStatus();
-            $purchase->save();
-
-            // ✅ Create payment record
-            $payment = $purchase->payments()->create([
-                'amount' => $request->amount,
-                'payment_method' => $request->payment_method,
-                'payment_date' => $request->payment_date,
-                'transaction_no' => 'PAY-' . time() . '-' . rand(100, 999),
-                'notes' => $request->notes,
-                'created_by' => auth()->id(),
-                'status' => 'completed'
+            return response()->json([
+                'success' => true,
+                'message' => "Payment of Rs. " . number_format($request->amount, 2) . " recorded successfully!",
+                'balance_due' => $purchase->balance_due,
+                'payment_status' => $purchase->payment_status,
+                'amount_paid' => $purchase->amount_paid
             ]);
 
-            // Update supplier balance
-            $supplier = $purchase->supplier;
-            if ($supplier) {
-                $supplier->decrement('opening_balance', $request->amount);
-            }
-
-            // ✅ Auto Accounting for Payment
-            $this->recordPaymentAccounting($purchase, $request);
-        });
-
-        return response()->json([
-            'success' => true,
-            'message' => "Payment of Rs. " . number_format($request->amount, 2) . " recorded successfully!",
-            'balance_due' => $purchase->balance_due,
-            'payment_status' => $purchase->payment_status,
-            'amount_paid' => $purchase->amount_paid
-        ]);
-
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage()
-        ], 400);
-    }
-}
-
-/**
- * Record Payment Accounting
- */
-private function recordPaymentAccounting($purchase, $request)
-{
-    try {
-        $payableAccount = Account::where('account_code', '2001')->first();
-        $cashAccount = Account::where('account_code', '1001')->first();
-
-        if ($payableAccount && $cashAccount) {
-            // 1. Debit: Accounts Payable
-            AccountingEntry::create([
-                'entry_no' => AccountingEntry::generateEntryNo(),
-                'date' => $request->payment_date,
-                'description' => "Payment against purchase: {$purchase->purchase_invoice_no}",
-                'transaction_type' => 'payment',
-                'reference_type' => get_class($purchase),
-                'reference_id' => $purchase->id,
-                'account_id' => $payableAccount->id,
-                'opposite_account_id' => $cashAccount->id,
-                'debit' => $request->amount,
-                'credit' => 0,
-                'status' => 'approved',
-                'created_by' => auth()->id(),
-            ]);
-
-            // 2. Credit: Cash
-            AccountingEntry::create([
-                'entry_no' => AccountingEntry::generateEntryNo(),
-                'date' => $request->payment_date,
-                'description' => "Cash payment for purchase: {$purchase->purchase_invoice_no}",
-                'transaction_type' => 'payment',
-                'reference_type' => get_class($purchase),
-                'reference_id' => $purchase->id,
-                'account_id' => $cashAccount->id,
-                'opposite_account_id' => $payableAccount->id,
-                'debit' => 0,
-                'credit' => $request->amount,
-                'status' => 'approved',
-                'created_by' => auth()->id(),
-            ]);
-
-            $payableAccount->updateBalance();
-            $cashAccount->updateBalance();
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
         }
-    } catch (\Exception $e) {
-        Log::error('Payment accounting error: ' . $e->getMessage());
     }
-}
 
     // ============================================
     // PRINT - Print Purchase
     // ============================================
     public function print(Purchase $purchase)
     {
-        $purchase->load(['supplier', 'gasProduct', 'cylinder']);
+        $purchase->load(['supplier', 'items.gasProduct', 'items.cylinder']);
         return view('purchases.print', compact('purchase'));
-    }
-
-    // ============================================
-    // HELPER METHODS
-    // ============================================
-    private function getPaymentStatus($total, $paid)
-    {
-        if ($paid >= $total) return 'paid';
-        if ($paid > 0) return 'partial';
-        return 'unpaid';
-    }
-
-    // ============================================
-    // ACCOUNTING
-    // ============================================
-    private function recordAccounting($purchase, $validated)
-    {
-        try {
-            $entries = [];
-            $accounts = [];
-
-            $debitAccount = Account::find($validated['debit_account_id']);
-            $creditAccount = Account::find($validated['credit_account_id']);
-            $cashAccount = Account::where('account_code', '1001')->first();
-
-            // 1. Debit Entry
-            $debitTotal = $validated['gas_total'] + $validated['cylinder_total'];
-            if ($debitTotal > 0 && $debitAccount) {
-                $entries[] = [
-                    'account_id' => $debitAccount->id,
-                    'opposite_account_id' => $creditAccount->id,
-                    'debit' => $debitTotal,
-                    'credit' => 0,
-                    'description' => "Purchase: {$purchase->purchase_invoice_no} - Debit",
-                ];
-                $accounts[] = $debitAccount;
-            }
-
-            // 2. Credit Entry
-            if ($validated['grand_total'] > 0 && $creditAccount) {
-                $entries[] = [
-                    'account_id' => $creditAccount->id,
-                    'opposite_account_id' => $debitAccount->id,
-                    'debit' => 0,
-                    'credit' => $validated['grand_total'],
-                    'description' => "Purchase: {$purchase->purchase_invoice_no} - Credit",
-                ];
-                $accounts[] = $creditAccount;
-            }
-
-            // 3. Payment Entry
-            if ($validated['amount_paid'] > 0 && $cashAccount) {
-                $entries[] = [
-                    'account_id' => $creditAccount->id,
-                    'opposite_account_id' => $cashAccount->id,
-                    'debit' => $validated['amount_paid'],
-                    'credit' => 0,
-                    'description' => "Payment against: {$purchase->purchase_invoice_no}",
-                ];
-                $entries[] = [
-                    'account_id' => $cashAccount->id,
-                    'opposite_account_id' => $creditAccount->id,
-                    'debit' => 0,
-                    'credit' => $validated['amount_paid'],
-                    'description' => "Cash Payment: {$purchase->purchase_invoice_no}",
-                ];
-                $accounts[] = $cashAccount;
-            }
-
-            foreach ($entries as $entry) {
-                AccountingEntry::create([
-                    'entry_no' => AccountingEntry::generateEntryNo(),
-                    'date' => now(),
-                    'description' => $entry['description'],
-                    'transaction_type' => 'purchase',
-                    'reference_type' => get_class($purchase),
-                    'reference_id' => $purchase->id,
-                    'account_id' => $entry['account_id'],
-                    'opposite_account_id' => $entry['opposite_account_id'],
-                    'debit' => $entry['debit'],
-                    'credit' => $entry['credit'],
-                    'status' => 'approved',
-                    'created_by' => auth()->id(),
-                ]);
-            }
-
-            foreach ($accounts as $account) {
-                $account->updateBalance();
-            }
-
-            Log::info('Purchase accounting recorded: ' . $purchase->purchase_invoice_no);
-
-        } catch (\Exception $e) {
-            Log::error('Purchase accounting error: ' . $e->getMessage());
-        }
     }
 }

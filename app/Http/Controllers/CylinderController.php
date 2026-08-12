@@ -3,23 +3,30 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cylinder;
+use App\Models\CylinderIssuedDetail;
 use App\Models\GasProduct;
 use App\Models\Supplier;
 use App\Models\Customer;
-use App\Models\Account;
-use App\Models\AccountingEntry;
+use App\Http\Requests\StoreCylinderRequest;
+use App\Services\AccountingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class CylinderController extends Controller
 {
+    protected $accountingService;
+
+    public function __construct(AccountingService $accountingService)
+    {
+        $this->accountingService = $accountingService;
+    }
+
     // ============================================
     // INDEX - List Cylinders
     // ============================================
     public function index(Request $request)
     {
-        $query = Cylinder::with(['gasProduct', 'currentCustomer', 'supplier']);
+        $query = Cylinder::with(['gasProduct', 'supplier']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -48,8 +55,6 @@ class CylinderController extends Controller
             'in_house' => Cylinder::where('status', 'in_house')->count(),
             'partial_issued' => Cylinder::where('status', 'partial_issued')->count(),
             'all_issued' => Cylinder::where('status', 'all_issued')->count(),
-            'issued' => Cylinder::where('status', 'issued')->count(),
-            'sold' => Cylinder::where('status', 'sold')->count(),
             'under_maintenance' => Cylinder::where('status', 'under_maintenance')->count(),
             'scrapped' => Cylinder::where('status', 'scrapped')->count(),
             'out_of_stock' => Cylinder::where('status', 'out_of_stock')->count(),
@@ -70,42 +75,16 @@ class CylinderController extends Controller
     {
         $gasProducts = GasProduct::where('is_active', true)->get();
         $suppliers = Supplier::where('is_active', true)->get();
-        $customers = Customer::where('is_active', true)->get();
 
-        return view('cylinders.create', compact('gasProducts', 'suppliers', 'customers'));
+        return view('cylinders.create', compact('gasProducts', 'suppliers'));
     }
 
     // ============================================
-    // STORE - Save Cylinder
+    // STORE - Save Cylinder Type
     // ============================================
-    public function store(Request $request)
+    public function store(StoreCylinderRequest $request)
     {
-        $validated = $request->validate([
-            'cylinder_number' => 'nullable|string|max:50|unique:cylinders,cylinder_number',
-            'gas_product_id' => 'required|exists:gas_products,id',
-            'type' => 'required|string|max:50',
-            'manufacturer' => 'nullable|string|max:100',
-            'tare_weight' => 'nullable|numeric|min:0',
-            'capacity' => 'required|numeric|min:0.01',
-            'current_gas_quantity' => 'nullable|numeric|min:0',
-            'stock_quantity' => 'required|integer|min:1',
-            'purchase_price' => 'required|numeric|min:0',
-            'sale_price' => 'required|numeric|min:0',
-            'supplier_id' => 'nullable|exists:suppliers,id',
-            'purchase_date' => 'nullable|date',
-            'last_hydro_test_date' => 'nullable|date',
-            'next_hydro_test_date' => 'nullable|date|after:last_hydro_test_date',
-            'notes' => 'nullable|string|max:1000'
-        ]);
-
-        if ($validated['sale_price'] < $validated['purchase_price']) {
-            return redirect()->back()
-                ->with('error', 'Sale price must be greater than purchase price')
-                ->withInput();
-        }
-
-        $validated['issued_quantity'] = 0;
-        $validated['status'] = 'in_house';
+        $validated = $request->validated();
 
         DB::transaction(function () use ($validated) {
             $cylinder = Cylinder::create($validated);
@@ -113,23 +92,16 @@ class CylinderController extends Controller
             $cylinder->transactions()->create([
                 'transaction_type' => 'purchased',
                 'transaction_date' => $validated['purchase_date'] ?? now(),
-                'gas_quantity_at_transaction' => $validated['current_gas_quantity'] ?? 0,
-                'remarks' => 'Cylinder added to system',
+                'remarks' => "Registered with {$cylinder->stock_quantity} piece(s) in stock",
                 'user_id' => auth()->id()
             ]);
 
-            $this->recordCylinderAsset($cylinder);
-
-            if ($validated['current_gas_quantity'] > 0) {
-                $gasProduct = GasProduct::find($validated['gas_product_id']);
-                if ($gasProduct) {
-                    $gasProduct->increment('current_stock', $validated['current_gas_quantity']);
-                }
-            }
+            $totalValue = round(($validated['purchase_price'] ?? 0) * ($validated['stock_quantity'] ?? 0), 2);
+            $this->accountingService->recordCylinderAsset($cylinder, $totalValue, 'cash');
         });
 
         return redirect()->route('cylinders.index')
-            ->with('success', 'Cylinder created successfully!');
+            ->with('success', 'Cylinder type created successfully!');
     }
 
     // ============================================
@@ -137,10 +109,10 @@ class CylinderController extends Controller
     // ============================================
     public function show(Cylinder $cylinder)
     {
-        $cylinder->load(['gasProduct', 'currentCustomer', 'supplier', 'purchase']);
+        $cylinder->load(['gasProduct', 'supplier']);
 
         $transactions = $cylinder->transactions()
-            ->with(['customer', 'supplier', 'user'])
+            ->with(['customer', 'user'])
             ->latest()
             ->paginate(20);
 
@@ -170,74 +142,29 @@ class CylinderController extends Controller
     // ============================================
     public function edit(Cylinder $cylinder)
     {
-        if (in_array($cylinder->status, ['issued', 'sold', 'all_issued'])) {
+        if ($cylinder->issued_quantity > 0) {
             return redirect()->route('cylinders.show', $cylinder)
-                ->with('error', 'Cannot edit issued or sold cylinders.');
+                ->with('error', 'Cannot edit a cylinder type while units are issued to customers.');
         }
 
         $gasProducts = GasProduct::where('is_active', true)->get();
         $suppliers = Supplier::where('is_active', true)->get();
-        $customers = Customer::where('is_active', true)->get();
 
-        return view('cylinders.edit', compact('cylinder', 'gasProducts', 'suppliers', 'customers'));
+        return view('cylinders.edit', compact('cylinder', 'gasProducts', 'suppliers'));
     }
 
     // ============================================
     // UPDATE - Update Cylinder
     // ============================================
-    public function update(Request $request, Cylinder $cylinder)
+    public function update(StoreCylinderRequest $request, Cylinder $cylinder)
     {
-        if (in_array($cylinder->status, ['issued', 'sold', 'all_issued'])) {
+        if ($cylinder->issued_quantity > 0) {
             return redirect()->route('cylinders.show', $cylinder)
-                ->with('error', 'Cannot update issued or sold cylinders.');
+                ->with('error', 'Cannot update a cylinder type while units are issued to customers.');
         }
 
-        $validated = $request->validate([
-            'cylinder_number' => 'required|string|max:50|unique:cylinders,cylinder_number,' . $cylinder->id,
-            'gas_product_id' => 'required|exists:gas_products,id',
-            'type' => 'required|string|max:50',
-            'manufacturer' => 'nullable|string|max:100',
-            'tare_weight' => 'nullable|numeric|min:0',
-            'capacity' => 'required|numeric|min:0.01',
-            'current_gas_quantity' => 'nullable|numeric|min:0',
-            'stock_quantity' => 'required|integer|min:0',
-            'purchase_price' => 'required|numeric|min:0',
-            'sale_price' => 'required|numeric|min:0',
-            'supplier_id' => 'nullable|exists:suppliers,id',
-            'purchase_date' => 'nullable|date',
-            'last_hydro_test_date' => 'nullable|date',
-            'next_hydro_test_date' => 'nullable|date|after:last_hydro_test_date',
-            'notes' => 'nullable|string|max:1000'
-        ]);
-
-        if ($validated['sale_price'] < $validated['purchase_price']) {
-            return redirect()->back()
-                ->with('error', 'Sale price must be greater than purchase price')
-                ->withInput();
-        }
-
-        DB::transaction(function () use ($validated, $cylinder) {
-            $oldStatus = $cylinder->status;
-            $oldGasProductId = $cylinder->gas_product_id;
-            $oldGasQuantity = $cylinder->current_gas_quantity;
-
-            $cylinder->update($validated);
-            $cylinder->updateStatus();
-
-            if ($oldStatus === 'in_house' && $oldGasQuantity > 0) {
-                $oldGasProduct = GasProduct::find($oldGasProductId);
-                if ($oldGasProduct) {
-                    $oldGasProduct->decrement('current_stock', $oldGasQuantity);
-                }
-            }
-
-            if ($cylinder->status === 'in_house' && $cylinder->current_gas_quantity > 0) {
-                $newGasProduct = GasProduct::find($cylinder->gas_product_id);
-                if ($newGasProduct) {
-                    $newGasProduct->increment('current_stock', $cylinder->current_gas_quantity);
-                }
-            }
-        });
+        $cylinder->update($request->validated());
+        $cylinder->updateStatus();
 
         return redirect()->route('cylinders.index')
             ->with('success', 'Cylinder updated successfully!');
@@ -248,19 +175,12 @@ class CylinderController extends Controller
     // ============================================
     public function destroy(Cylinder $cylinder)
     {
-        if (in_array($cylinder->status, ['issued', 'sold', 'all_issued'])) {
+        if ($cylinder->issued_quantity > 0) {
             return redirect()->route('cylinders.index')
-                ->with('error', 'Cannot delete issued or sold cylinders.');
+                ->with('error', 'Cannot delete a cylinder type while units are issued to customers.');
         }
 
         DB::transaction(function () use ($cylinder) {
-            if ($cylinder->current_gas_quantity > 0) {
-                $gasProduct = GasProduct::find($cylinder->gas_product_id);
-                if ($gasProduct) {
-                    $gasProduct->decrement('current_stock', $cylinder->current_gas_quantity);
-                }
-            }
-
             $cylinder->transactions()->delete();
             $cylinder->issuedDetails()->delete();
             $cylinder->delete();
@@ -275,7 +195,7 @@ class CylinderController extends Controller
     // ============================================
     public function stock(Request $request)
     {
-        $query = Cylinder::with(['gasProduct', 'currentCustomer']);
+        $query = Cylinder::with(['gasProduct']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -336,10 +256,15 @@ class CylinderController extends Controller
                     $message = "Removed {$request->quantity} pieces from stock.";
                     break;
                 case 'set':
+                    if ($request->quantity < $cylinder->issued_quantity) {
+                        throw new \Exception("Cannot set stock below the {$cylinder->issued_quantity} pieces currently issued.");
+                    }
                     $cylinder->update(['stock_quantity' => $request->quantity]);
                     $cylinder->updateStatus();
                     $message = "Set stock to {$request->quantity} pieces.";
                     break;
+                default:
+                    throw new \Exception('Invalid stock action.');
             }
 
             return response()->json([
@@ -369,18 +294,10 @@ class CylinderController extends Controller
             'cylinder_id' => 'required|exists:cylinders,id',
             'customer_id' => 'required|exists:customers,id',
             'security_deposit' => 'nullable|numeric|min:0',
-            'gas_quantity' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string|max:500'
         ]);
 
         $cylinder = Cylinder::find($request->cylinder_id);
-
-        if (!$cylinder->is_in_stock) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cylinder is not available for issue.'
-            ], 400);
-        }
 
         try {
             $cylinder->issueToCustomer(
@@ -448,8 +365,7 @@ class CylinderController extends Controller
     // ============================================
     public function available(Request $request)
     {
-        $cylinders = Cylinder::where('stock_quantity', '>', 0)
-            ->where('issued_quantity', '<', DB::raw('stock_quantity'))
+        $cylinders = Cylinder::whereColumn('stock_quantity', '>', 'issued_quantity')
             ->with('gasProduct')
             ->when($request->filled('gas_product_id'), function ($q) use ($request) {
                 return $q->where('gas_product_id', $request->gas_product_id);
@@ -478,31 +394,24 @@ class CylinderController extends Controller
     // ============================================
     public function customerOutstanding(Customer $customer)
     {
-        $cylinders = $customer->cylinders()
-            ->where('status', 'issued')
-            ->with(['gasProduct'])
-            ->get()
-            ->map(function ($cylinder) {
-                $issuedDetail = $cylinder->issuedDetails()
-                    ->where('customer_id', $customer->id)
-                    ->where('status', 'issued')
-                    ->first();
+        $details = $customer->activeCylinderIssues()->with('cylinder.gasProduct')->get();
 
-                return [
-                    'id' => $cylinder->id,
-                    'cylinder_number' => $cylinder->cylinder_number,
-                    'gas_product' => $cylinder->gasProduct,
-                    'type' => $cylinder->type,
-                    'issued_date' => $issuedDetail ? $issuedDetail->issue_date->format('d-m-Y') : 'N/A',
-                    'days_out' => $issuedDetail ? $issuedDetail->issue_date->diffInDays(now()) : 0,
-                    'security_deposit' => $issuedDetail ? $issuedDetail->security_deposit : 0,
-                    'quantity' => $issuedDetail ? $issuedDetail->quantity : 1,
-                ];
-            });
+        $cylinders = $details->map(function ($detail) {
+            return [
+                'id' => $detail->cylinder_id,
+                'cylinder_number' => $detail->cylinder->cylinder_number ?? 'N/A',
+                'gas_product' => $detail->cylinder->gasProduct ?? null,
+                'type' => $detail->cylinder->type ?? 'N/A',
+                'issued_date' => $detail->issue_date ? $detail->issue_date->format('d-m-Y') : 'N/A',
+                'days_out' => $detail->days_out,
+                'security_deposit' => $detail->security_deposit,
+                'quantity' => $detail->quantity,
+            ];
+        });
 
         return response()->json([
             'cylinders' => $cylinders,
-            'total_deposit' => $customer->security_deposit,
+            'total_deposit' => $details->sum('security_deposit'),
             'count' => $cylinders->count()
         ]);
     }
@@ -512,7 +421,7 @@ class CylinderController extends Controller
     // ============================================
     public function export()
     {
-        $cylinders = Cylinder::with(['gasProduct', 'currentCustomer'])->get();
+        $cylinders = Cylinder::with(['gasProduct', 'supplier'])->get();
 
         $headers = [
             'Content-Type' => 'text/csv',
@@ -523,7 +432,7 @@ class CylinderController extends Controller
             $file = fopen('php://output', 'w');
             fputcsv($file, [
                 'Cylinder #', 'Gas', 'Type', 'Stock', 'Issued',
-                'Available', 'Purchase Price', 'Sale Price', 'Status', 'Location'
+                'Available', 'Purchase Price', 'Sale Price', 'Status', 'Supplier'
             ]);
 
             foreach ($cylinders as $cylinder) {
@@ -537,47 +446,12 @@ class CylinderController extends Controller
                     $cylinder->purchase_price,
                     $cylinder->sale_price,
                     $cylinder->status_label,
-                    $cylinder->currentCustomer->name ?? ($cylinder->supplier->name ?? 'In House'),
+                    $cylinder->supplier->name ?? 'N/A',
                 ]);
             }
             fclose($file);
         };
 
         return response()->stream($callback, 200, $headers);
-    }
-
-    // ============================================
-    // ACCOUNTING HELPER
-    // ============================================
-    private function recordCylinderAsset($cylinder)
-    {
-        try {
-            $assetAccount = Account::where('account_code', '1004')->first();
-            $cashAccount = Account::where('account_code', '1001')->first();
-
-            if ($assetAccount && $cashAccount) {
-                $totalValue = $cylinder->purchase_price * $cylinder->stock_quantity;
-
-                AccountingEntry::create([
-                    'entry_no' => AccountingEntry::generateEntryNo(),
-                    'date' => now(),
-                    'description' => "Cylinder Asset: {$cylinder->cylinder_number}",
-                    'transaction_type' => 'purchase',
-                    'reference_type' => get_class($cylinder),
-                    'reference_id' => $cylinder->id,
-                    'account_id' => $assetAccount->id,
-                    'opposite_account_id' => $cashAccount->id,
-                    'debit' => $totalValue,
-                    'credit' => 0,
-                    'status' => 'approved',
-                    'created_by' => auth()->id(),
-                ]);
-
-                $assetAccount->updateBalance();
-                $cashAccount->updateBalance();
-            }
-        } catch (\Exception $e) {
-            Log::error('Cylinder asset accounting error: ' . $e->getMessage());
-        }
     }
 }

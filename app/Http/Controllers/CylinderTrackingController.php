@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Cylinder;
 use App\Models\Customer;
+use App\Models\CylinderIssuedDetail;
 use App\Models\Sale;
+use App\Models\Purchase;
 use App\Models\CylinderTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,39 +18,40 @@ class CylinderTrackingController extends Controller
      */
     public function index()
     {
-        // Get statistics
         $stats = [
-            'total_issued' => Cylinder::where('status', 'issued')->count(),
-            'pending_return_7' => Cylinder::pendingReturn(7)->count(),
-            'pending_return_14' => Cylinder::pendingReturn(14)->count(),
-            'pending_return_30' => Cylinder::pendingReturn(30)->count(),
-            'total_customers' => Customer::whereHas('cylinders', function ($q) {
-                $q->where('status', 'issued');
-            })->count(),
+            'total_issued' => Cylinder::sum('issued_quantity'),
+            'pending_return_7' => $this->pendingReturnQuery(7)->count(),
+            'pending_return_14' => $this->pendingReturnQuery(14)->count(),
+            'pending_return_30' => $this->pendingReturnQuery(30)->count(),
+            'total_customers' => Customer::whereHas('activeCylinderIssues')->count(),
         ];
 
-        // Get all issued cylinders with customer details
-        $issuedCylinders = Cylinder::with(['currentCustomer', 'gasProduct'])
+        $issuedCylinders = CylinderIssuedDetail::with(['cylinder.gasProduct', 'customer'])
             ->where('status', 'issued')
-            ->orderBy('updated_at', 'asc')
+            ->orderBy('issue_date', 'asc')
             ->get()
-            ->map(function ($cylinder) {
-                $details = $cylinder->getCurrentCustomerWithDetails();
+            ->map(function ($detail) {
                 return (object) [
-                    'cylinder' => $cylinder,
-                    'customer' => $details->customer ?? null,
-                    'issued_date' => $details->issued_date ?? null,
-                    'days_out' => $details->days_out ?? 0,
-                    'security_deposit' => $details->security_deposit ?? 0,
-                    'sale' => $details->sale ?? null,
+                    'cylinder' => $detail->cylinder,
+                    'customer' => $detail->customer,
+                    'quantity' => $detail->quantity,
+                    'issued_date' => $detail->issue_date,
+                    'days_out' => $detail->days_out,
+                    'security_deposit' => $detail->security_deposit,
                 ];
             });
 
         return view('cylinders.tracking', compact('stats', 'issuedCylinders'));
     }
 
+    private function pendingReturnQuery($days)
+    {
+        return CylinderIssuedDetail::where('status', 'issued')
+            ->where('issue_date', '<', now()->subDays($days));
+    }
+
     /**
-     * Track cylinder by number
+     * Track cylinder type by code, showing everyone currently holding units of it
      */
     public function track(Request $request)
     {
@@ -56,7 +59,7 @@ class CylinderTrackingController extends Controller
             'cylinder_number' => 'required|string|exists:cylinders,cylinder_number'
         ]);
 
-        $cylinder = Cylinder::with(['gasProduct', 'currentCustomer', 'supplier'])
+        $cylinder = Cylinder::with(['gasProduct', 'supplier'])
             ->where('cylinder_number', $request->cylinder_number)
             ->first();
 
@@ -64,25 +67,19 @@ class CylinderTrackingController extends Controller
             return redirect()->back()->with('error', 'Cylinder not found!');
         }
 
-        // Get current customer details
-        $currentDetails = $cylinder->getCurrentCustomerWithDetails();
-        
-        // Get full history
+        $currentHolders = $cylinder->activeIssuedDetails()->with('customer')->get();
         $history = $cylinder->getFullHistory();
-        
-        // Get journey
         $journey = $cylinder->getJourney();
 
-        // Get all sales related to this cylinder
         $sales = Sale::whereHas('items', function ($q) use ($cylinder) {
             $q->where('cylinder_id', $cylinder->id);
         })->with(['customer'])->get();
 
         return view('cylinders.track-result', compact(
-            'cylinder', 
-            'currentDetails', 
-            'history', 
-            'journey', 
+            'cylinder',
+            'currentHolders',
+            'history',
+            'journey',
             'sales'
         ));
     }
@@ -96,20 +93,17 @@ class CylinderTrackingController extends Controller
             'customer_id' => 'required|exists:customers,id'
         ]);
 
-        $customer = Customer::with(['cylinders' => function ($q) {
-            $q->where('status', 'issued')->with(['gasProduct', 'transactions' => function ($tq) {
-                $tq->where('transaction_type', 'issued')->latest()->first();
-            }]);
-        }])->find($request->customer_id);
+        $customer = Customer::with(['activeCylinderIssues.cylinder.gasProduct'])
+            ->find($request->customer_id);
 
-        $cylinders = $customer->cylinders->map(function ($cylinder) {
-            $lastIssue = $cylinder->transactions->first();
+        $cylinders = $customer->activeCylinderIssues->map(function ($detail) {
             return (object) [
-                'cylinder' => $cylinder,
-                'issued_date' => $lastIssue ? $lastIssue->created_at : null,
-                'days_out' => $lastIssue ? $lastIssue->created_at->diffInDays(now()) : 0,
-                'security_deposit' => $lastIssue ? $lastIssue->security_deposit_charged : 0,
-                'reference_document' => $lastIssue ? $lastIssue->reference_document : null
+                'cylinder' => $detail->cylinder,
+                'quantity' => $detail->quantity,
+                'issued_date' => $detail->issue_date,
+                'days_out' => $detail->days_out,
+                'security_deposit' => $detail->security_deposit,
+                'reference_document' => $detail->reference_document,
             ];
         });
 
@@ -122,31 +116,26 @@ class CylinderTrackingController extends Controller
     public function getCustomerReport(Request $request)
     {
         $customerId = $request->customer_id;
-        $status = $request->status ?? 'all';
+        $status = $request->status ?? 'issued';
 
-        $query = Cylinder::with(['gasProduct'])
-            ->where('current_customer_id', $customerId);
+        $query = CylinderIssuedDetail::with(['cylinder.gasProduct'])
+            ->where('customer_id', $customerId);
 
         if ($status !== 'all') {
             $query->where('status', $status);
         }
 
-        $cylinders = $query->get()->map(function ($cylinder) {
-            $lastIssue = $cylinder->transactions()
-                ->where('transaction_type', 'issued')
-                ->latest()
-                ->first();
-
+        $cylinders = $query->get()->map(function ($detail) {
             return [
-                'id' => $cylinder->id,
-                'cylinder_number' => $cylinder->cylinder_number,
-                'gas_name' => $cylinder->gasProduct->name ?? 'N/A',
-                'status' => $cylinder->status,
-                'status_label' => $cylinder->status_label,
-                'issued_date' => $lastIssue ? $lastIssue->created_at->format('d-m-Y') : 'N/A',
-                'days_out' => $lastIssue ? $lastIssue->created_at->diffInDays(now()) : 0,
-                'reference_document' => $lastIssue ? $lastIssue->reference_document : 'N/A',
-                'security_deposit' => $lastIssue ? $lastIssue->security_deposit_charged : 0,
+                'id' => $detail->cylinder_id,
+                'cylinder_number' => $detail->cylinder->cylinder_number ?? 'N/A',
+                'gas_name' => $detail->cylinder->gasProduct->name ?? 'N/A',
+                'quantity' => $detail->quantity,
+                'status' => $detail->status,
+                'issued_date' => $detail->issue_date ? $detail->issue_date->format('d-m-Y') : 'N/A',
+                'days_out' => $detail->days_out,
+                'reference_document' => $detail->reference_document ?? 'N/A',
+                'security_deposit' => $detail->security_deposit,
             ];
         });
 
@@ -163,7 +152,7 @@ class CylinderTrackingController extends Controller
     public function getHistory(Request $request)
     {
         $cylinderId = $request->cylinder_id;
-        
+
         $cylinder = Cylinder::find($cylinderId);
         if (!$cylinder) {
             return response()->json(['success' => false, 'message' => 'Cylinder not found'], 404);
@@ -183,7 +172,7 @@ class CylinderTrackingController extends Controller
      */
     public function export(Request $request)
     {
-        $cylinders = Cylinder::with(['currentCustomer', 'gasProduct'])
+        $details = CylinderIssuedDetail::with(['cylinder.gasProduct', 'customer'])
             ->where('status', 'issued')
             ->get();
 
@@ -192,24 +181,24 @@ class CylinderTrackingController extends Controller
             'Content-Disposition' => 'attachment; filename="cylinder_tracking_' . date('Y-m-d') . '.csv"',
         ];
 
-        $callback = function () use ($cylinders) {
+        $callback = function () use ($details) {
             $file = fopen('php://output', 'w');
             fputcsv($file, [
-                'Cylinder #', 'Gas Type', 'Customer', 'Phone', 
-                'Issued Date', 'Days Out', 'Security Deposit', 'Sale Invoice'
+                'Cylinder Type', 'Gas Type', 'Customer', 'Phone', 'Quantity',
+                'Issued Date', 'Days Out', 'Security Deposit', 'Reference'
             ]);
 
-            foreach ($cylinders as $cylinder) {
-                $details = $cylinder->getCurrentCustomerWithDetails();
+            foreach ($details as $detail) {
                 fputcsv($file, [
-                    $cylinder->cylinder_number,
-                    $cylinder->gasProduct->name ?? 'N/A',
-                    $details->customer->name ?? 'N/A',
-                    $details->customer->phone ?? 'N/A',
-                    $details->issued_date ? $details->issued_date->format('d-m-Y') : 'N/A',
-                    $details->days_out ?? 0,
-                    $details->security_deposit ?? 0,
-                    $details->sale->invoice_no ?? 'N/A'
+                    $detail->cylinder->cylinder_number ?? 'N/A',
+                    $detail->cylinder->gasProduct->name ?? 'N/A',
+                    $detail->customer->name ?? 'N/A',
+                    $detail->customer->phone ?? 'N/A',
+                    $detail->quantity,
+                    $detail->issue_date ? $detail->issue_date->format('d-m-Y') : 'N/A',
+                    $detail->days_out,
+                    $detail->security_deposit,
+                    $detail->reference_document ?? 'N/A',
                 ]);
             }
             fclose($file);
@@ -218,30 +207,26 @@ class CylinderTrackingController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-
     /**
      * Display cylinder history tracking page
      */
     public function history()
     {
-        // Get all cylinders with their transactions
-        $cylinders = Cylinder::with(['gasProduct', 'currentCustomer', 'transactions' => function ($q) {
+        $cylinders = Cylinder::with(['gasProduct', 'transactions' => function ($q) {
             $q->orderBy('created_at', 'desc');
         }])->get();
 
-        // Get statistics
         $stats = [
-            'total_cylinders' => Cylinder::count(),
-            'issued_cylinders' => Cylinder::where('status', 'issued')->count(),
-            'sold_cylinders' => Cylinder::where('status', 'sold')->count(),
+            'total_cylinders' => Cylinder::sum('stock_quantity'),
+            'issued_cylinders' => Cylinder::sum('issued_quantity'),
+            'under_maintenance' => Cylinder::where('status', 'under_maintenance')->count(),
             'scrapped_cylinders' => Cylinder::where('status', 'scrapped')->count(),
             'total_transactions' => CylinderTransaction::count(),
             'total_issues' => CylinderTransaction::where('transaction_type', 'issued')->count(),
             'total_returns' => CylinderTransaction::where('transaction_type', 'returned')->count(),
         ];
 
-        // Get recent transactions
-        $recentTransactions = CylinderTransaction::with(['cylinder', 'customer', 'supplier', 'user'])
+        $recentTransactions = CylinderTransaction::with(['cylinder', 'customer', 'user'])
             ->orderBy('created_at', 'desc')
             ->limit(50)
             ->get();
@@ -254,8 +239,7 @@ class CylinderTrackingController extends Controller
      */
     public function getCylinderHistory($cylinderId)
     {
-        $cylinder = Cylinder::with(['gasProduct', 'currentCustomer', 'supplier'])
-            ->find($cylinderId);
+        $cylinder = Cylinder::with(['gasProduct', 'supplier'])->find($cylinderId);
 
         if (!$cylinder) {
             return response()->json([
@@ -264,9 +248,8 @@ class CylinderTrackingController extends Controller
             ], 404);
         }
 
-        // Get all transactions with details
         $transactions = $cylinder->transactions()
-            ->with(['customer', 'supplier', 'user'])
+            ->with(['customer', 'user'])
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($transaction) {
@@ -282,11 +265,6 @@ class CylinderTrackingController extends Controller
                         'name' => $transaction->customer->name,
                         'phone' => $transaction->customer->phone,
                     ] : null,
-                    'supplier' => $transaction->supplier ? [
-                        'id' => $transaction->supplier->id,
-                        'name' => $transaction->supplier->name,
-                        'phone' => $transaction->supplier->phone,
-                    ] : null,
                     'user' => $transaction->user ? [
                         'id' => $transaction->user->id,
                         'name' => $transaction->user->name,
@@ -301,11 +279,8 @@ class CylinderTrackingController extends Controller
                 ];
             });
 
-        // Get journey timeline
         $journey = $cylinder->getJourney();
-
-        // Get current status details
-        $currentDetails = $cylinder->getCurrentCustomerWithDetails();
+        $currentHolders = $cylinder->activeIssuedDetails()->with('customer')->get();
 
         return response()->json([
             'success' => true,
@@ -318,15 +293,14 @@ class CylinderTrackingController extends Controller
                 'status' => $cylinder->status,
                 'status_label' => $cylinder->status_label,
                 'status_color' => $cylinder->status_color,
-                'current_gas_quantity' => $cylinder->current_gas_quantity,
+                'stock_quantity' => $cylinder->stock_quantity,
+                'issued_quantity' => $cylinder->issued_quantity,
                 'purchase_price' => $cylinder->purchase_price,
                 'purchase_date' => $cylinder->purchase_date?->format('d-m-Y'),
-                'last_hydro_test' => $cylinder->last_hydro_test_date?->format('d-m-Y'),
-                'next_hydro_test' => $cylinder->next_hydro_test_date?->format('d-m-Y'),
             ],
             'transactions' => $transactions,
             'journey' => $journey,
-            'current_details' => $currentDetails,
+            'current_holders' => $currentHolders,
             'total_transactions' => $transactions->count(),
             'total_issues' => $transactions->where('type', 'issued')->count(),
             'total_returns' => $transactions->where('type', 'returned')->count(),
@@ -338,15 +312,14 @@ class CylinderTrackingController extends Controller
      */
     public function historyReport($cylinderId)
     {
-        $cylinder = Cylinder::with(['gasProduct', 'currentCustomer', 'supplier'])
-            ->find($cylinderId);
+        $cylinder = Cylinder::with(['gasProduct', 'supplier'])->find($cylinderId);
 
         if (!$cylinder) {
             return redirect()->back()->with('error', 'Cylinder not found');
         }
 
         $transactions = $cylinder->transactions()
-            ->with(['customer', 'supplier', 'user'])
+            ->with(['customer', 'user'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -368,7 +341,7 @@ class CylinderTrackingController extends Controller
         }
 
         $transactions = $cylinder->transactions()
-            ->with(['customer', 'supplier', 'user'])
+            ->with(['customer', 'user'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -379,8 +352,7 @@ class CylinderTrackingController extends Controller
 
         $callback = function () use ($cylinder, $transactions) {
             $file = fopen('php://output', 'w');
-            
-            // Header
+
             fputcsv($file, [
                 'Cylinder History Report',
                 'Cylinder: ' . $cylinder->cylinder_number,
@@ -388,19 +360,17 @@ class CylinderTrackingController extends Controller
                 'Generated: ' . now()->format('d-m-Y H:i:s')
             ]);
             fputcsv($file, []);
-            
-            // Column headers
+
             fputcsv($file, [
-                'Date', 'Type', 'Customer/Supplier', 'User', 
+                'Date', 'Type', 'Customer', 'User',
                 'Gas Quantity', 'Security Deposit', 'Damage Charge', 'Reference', 'Remarks'
             ]);
 
-            // Data
             foreach ($transactions as $transaction) {
                 fputcsv($file, [
                     $transaction->created_at->format('d-m-Y H:i:s'),
                     $transaction->type_label,
-                    $transaction->customer->name ?? ($transaction->supplier->name ?? 'System'),
+                    $transaction->customer->name ?? 'System',
                     $transaction->user->name ?? 'N/A',
                     $transaction->gas_quantity_at_transaction ?? 0,
                     $transaction->security_deposit_charged ?? 0,
@@ -409,7 +379,7 @@ class CylinderTrackingController extends Controller
                     $transaction->remarks ?? 'N/A'
                 ]);
             }
-            
+
             fclose($file);
         };
 
@@ -425,7 +395,6 @@ class CylinderTrackingController extends Controller
             return null;
         }
 
-        // Check if it's a sale reference
         if (str_starts_with($transaction->reference_document, 'INV-')) {
             $sale = Sale::where('invoice_no', $transaction->reference_document)->first();
             if ($sale) {
@@ -433,7 +402,6 @@ class CylinderTrackingController extends Controller
             }
         }
 
-        // Check if it's a purchase reference
         if (str_starts_with($transaction->reference_document, 'PO-')) {
             $purchase = Purchase::where('purchase_invoice_no', $transaction->reference_document)->first();
             if ($purchase) {
@@ -450,7 +418,7 @@ class CylinderTrackingController extends Controller
     public function getTimeline($cylinderId)
     {
         $cylinder = Cylinder::find($cylinderId);
-        
+
         if (!$cylinder) {
             return response()->json(['success' => false, 'message' => 'Cylinder not found'], 404);
         }
@@ -480,16 +448,16 @@ class CylinderTrackingController extends Controller
     public function getStats()
     {
         $stats = [
-            'total' => Cylinder::count(),
+            'total' => Cylinder::sum('stock_quantity'),
             'by_status' => [
-                'in_house_empty' => Cylinder::where('status', 'in_house_empty')->count(),
-                'in_house_filled' => Cylinder::where('status', 'in_house_filled')->count(),
-                'issued' => Cylinder::where('status', 'issued')->count(),
-                'sold' => Cylinder::where('status', 'sold')->count(),
+                'in_house' => Cylinder::where('status', 'in_house')->count(),
+                'partial_issued' => Cylinder::where('status', 'partial_issued')->count(),
+                'all_issued' => Cylinder::where('status', 'all_issued')->count(),
+                'out_of_stock' => Cylinder::where('status', 'out_of_stock')->count(),
                 'under_maintenance' => Cylinder::where('status', 'under_maintenance')->count(),
                 'scrapped' => Cylinder::where('status', 'scrapped')->count(),
             ],
-            'by_gas' => Cylinder::select('gas_product_id', DB::raw('count(*) as total'))
+            'by_gas' => Cylinder::select('gas_product_id', DB::raw('sum(stock_quantity) as total'))
                 ->groupBy('gas_product_id')
                 ->with('gasProduct')
                 ->get()
@@ -506,10 +474,7 @@ class CylinderTrackingController extends Controller
                 'sold' => CylinderTransaction::where('transaction_type', 'sold')->count(),
                 'purchased' => CylinderTransaction::where('transaction_type', 'purchased')->count(),
             ],
-            'pending_returns' => Cylinder::where('status', 'issued')
-                ->where('updated_at', '<', now()->subDays(7))
-                ->count(),
-            'expired_hydro_tests' => Cylinder::where('next_hydro_test_date', '<', now())->count(),
+            'pending_returns' => $this->pendingReturnQuery(7)->count(),
         ];
 
         return response()->json($stats);

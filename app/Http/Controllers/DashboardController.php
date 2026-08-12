@@ -6,20 +6,27 @@ use App\Models\Customer;
 use App\Models\Supplier;
 use App\Models\GasProduct;
 use App\Models\Cylinder;
+use App\Models\CylinderIssuedDetail;
+use App\Models\CylinderTransaction;
 use App\Models\Sale;
 use App\Models\Purchase;
-use App\Models\Transaction;
-use App\Models\Account;
+use App\Services\AccountingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    protected $accountingService;
+
+    public function __construct(AccountingService $accountingService)
+    {
+        $this->accountingService = $accountingService;
+    }
+
     public function index()
     {
         $today = now()->toDateString();
         $currentMonth = now()->startOfMonth();
-        $currentYear = now()->year;
 
         // ============================================
         // 1. QUICK STATS
@@ -27,93 +34,81 @@ class DashboardController extends Controller
         $stats = (object) [
             'total_customers' => Customer::where('is_active', true)->count(),
             'total_suppliers' => Supplier::where('is_active', true)->count(),
-            'total_cylinders' => Cylinder::count(),
-            'issued_cylinders' => Cylinder::where('status', 'issued')->count(),
-            'available_cylinders' => Cylinder::whereIn('status', ['in_house_empty', 'in_house_filled'])->count(),
-            
-            // Today's Sales
+            'total_cylinders' => Cylinder::sum('stock_quantity'),
+            'issued_cylinders' => Cylinder::sum('issued_quantity'),
+            'available_cylinders' => Cylinder::whereIn('status', ['in_house', 'partial_issued'])->sum(DB::raw('stock_quantity - issued_quantity')),
+
             'today_sales' => Sale::whereDate('date', $today)->where('status', '!=', 'cancelled')->sum('grand_total'),
             'today_sales_count' => Sale::whereDate('date', $today)->where('status', '!=', 'cancelled')->count(),
-            
-            // Month's Sales
+
             'month_sales' => Sale::where('date', '>=', $currentMonth)->where('status', '!=', 'cancelled')->sum('grand_total'),
-            
-            // Gas Stock Value
-            'gas_stock_value' => GasProduct::where('is_active', true)->get()->sum(function ($p) { 
-                return $p->current_stock * $p->purchase_price; 
+
+            'gas_stock_value' => GasProduct::where('is_active', true)->get()->sum(function ($p) {
+                return $p->current_stock * $p->purchase_price;
             }),
-            
-            // Cylinder Asset Value
-            'cylinder_asset_value' => Cylinder::whereNotIn('status', ['sold', 'scrapped'])->sum('purchase_price'),
-            
-            // Pending Receivables & Payables
+
+            'cylinder_asset_value' => Cylinder::where('status', '!=', 'scrapped')->sum(DB::raw('purchase_price * stock_quantity')),
+
             'pending_receivables' => Sale::where('payment_status', '!=', 'paid')->where('status', '!=', 'cancelled')->sum('balance_due'),
             'pending_payables' => Purchase::where('payment_status', '!=', 'paid')->where('status', '!=', 'cancelled')->sum('balance_due'),
         ];
 
         // ============================================
-        // 2. INCOME & EXPENSE (Using Transactions)
+        // 2. INCOME & EXPENSE
         // ============================================
         $incomeExpense = $this->getIncomeExpense();
 
         // ============================================
         // 3. ISSUED CYLINDERS WITH CUSTOMER DETAILS
         // ============================================
-        $issuedCylinders = Cylinder::with(['currentCustomer', 'gasProduct'])
+        $issuedCylinders = CylinderIssuedDetail::with(['cylinder.gasProduct', 'customer'])
             ->where('status', 'issued')
-            ->orderBy('updated_at', 'desc')
+            ->latest('issue_date')
             ->limit(10)
             ->get()
-            ->map(function ($cylinder) {
-                $lastIssue = $cylinder->transactions()
-                    ->where('transaction_type', 'issued')
-                    ->latest()
-                    ->first();
-                
+            ->map(function ($detail) {
                 return (object) [
-                    'id' => $cylinder->id,
-                    'cylinder_number' => $cylinder->cylinder_number,
-                    'gas_name' => $cylinder->gasProduct->name ?? 'N/A',
-                    'customer_name' => $cylinder->currentCustomer->name ?? 'N/A',
-                    'customer_phone' => $cylinder->currentCustomer->phone ?? 'N/A',
-                    'issued_date' => $lastIssue ? $lastIssue->created_at->format('d-m-Y') : 'N/A',
-                    'days_out' => $lastIssue ? $lastIssue->created_at->diffInDays(now()) : 0,
-                    'security_deposit' => $lastIssue ? $lastIssue->security_deposit_charged : 0,
+                    'id' => $detail->cylinder_id,
+                    'cylinder_number' => $detail->cylinder->cylinder_number ?? 'N/A',
+                    'gas_name' => $detail->cylinder->gasProduct->name ?? 'N/A',
+                    'customer_name' => $detail->customer->name ?? 'N/A',
+                    'customer_phone' => $detail->customer->phone ?? 'N/A',
+                    'quantity' => $detail->quantity,
+                    'issued_date' => $detail->issue_date ? $detail->issue_date->format('d-m-Y') : 'N/A',
+                    'days_out' => $detail->days_out,
+                    'security_deposit' => $detail->security_deposit,
                 ];
             });
 
         // ============================================
         // 4. CUSTOMER LIST WITH ISSUED CYLINDERS
         // ============================================
-        $customersWithCylinders = Customer::whereHas('cylinders', function ($q) {
-            $q->where('status', 'issued');
-        })
-        ->with(['cylinders' => function ($q) {
-            $q->where('status', 'issued')->with('gasProduct');
-        }])
-        ->get()
-        ->map(function ($customer) {
-            return (object) [
-                'id' => $customer->id,
-                'name' => $customer->name,
-                'phone' => $customer->phone,
-                'email' => $customer->email,
-                'address' => $customer->address,
-                'issued_cylinders' => $customer->cylinders->map(function ($cyl) {
-                    return (object) [
-                        'number' => $cyl->cylinder_number,
-                        'gas' => $cyl->gasProduct->name ?? 'N/A',
-                        'days_out' => $cyl->updated_at->diffInDays(now()),
-                    ];
-                }),
-                'total_issued' => $customer->cylinders->count(),
-                'total_deposit' => $customer->security_deposit,
-                'pending_balance' => $customer->sales()
-                    ->where('payment_status', '!=', 'paid')
-                    ->where('status', '!=', 'cancelled')
-                    ->sum('balance_due'),
-            ];
-        });
+        $customersWithCylinders = Customer::whereHas('activeCylinderIssues')
+            ->with(['activeCylinderIssues.cylinder.gasProduct'])
+            ->get()
+            ->map(function ($customer) {
+                return (object) [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'phone' => $customer->phone,
+                    'email' => $customer->email,
+                    'address' => $customer->address,
+                    'issued_cylinders' => $customer->activeCylinderIssues->map(function ($detail) {
+                        return (object) [
+                            'number' => $detail->cylinder->cylinder_number ?? 'N/A',
+                            'gas' => $detail->cylinder->gasProduct->name ?? 'N/A',
+                            'quantity' => $detail->quantity,
+                            'days_out' => $detail->days_out,
+                        ];
+                    }),
+                    'total_issued' => $customer->activeCylinderIssues->sum('quantity'),
+                    'total_deposit' => $customer->activeCylinderIssues->sum('security_deposit'),
+                    'pending_balance' => $customer->sales()
+                        ->where('payment_status', '!=', 'paid')
+                        ->where('status', '!=', 'cancelled')
+                        ->sum('balance_due'),
+                ];
+            });
 
         // ============================================
         // 5. MONTHLY REVENUE CHART
@@ -138,22 +133,22 @@ class DashboardController extends Controller
             ->get();
 
         // ============================================
-        // 9. PENDING RETURNS
+        // 9. PENDING RETURNS (issued 7+ days, not yet returned)
         // ============================================
-        $pendingReturns = Cylinder::where('status', 'issued')
-            ->where('updated_at', '<', now()->subDays(7))
-            ->with(['currentCustomer', 'gasProduct'])
+        $pendingReturns = CylinderIssuedDetail::with(['cylinder', 'customer'])
+            ->where('status', 'issued')
+            ->where('issue_date', '<', now()->subDays(7))
             ->get()
-            ->groupBy('current_customer_id')
-            ->map(function ($cylinders) {
-                $customer = $cylinders->first()->currentCustomer;
+            ->groupBy('customer_id')
+            ->map(function ($details) {
+                $customer = $details->first()->customer;
                 return (object) [
                     'customer_name' => $customer ? $customer->name : 'Unknown',
                     'customer_phone' => $customer ? $customer->phone : 'N/A',
-                    'cylinder_count' => $cylinders->count(),
-                    'cylinders' => $cylinders->pluck('cylinder_number')->join(', '),
-                    'days_out' => $cylinders->first()->updated_at->diffInDays(now()),
-                    'deposit_held' => $customer ? $customer->security_deposit : 0,
+                    'cylinder_count' => $details->sum('quantity'),
+                    'cylinders' => $details->pluck('cylinder.cylinder_number')->filter()->unique()->join(', '),
+                    'days_out' => $details->max('days_out'),
+                    'deposit_held' => $details->sum('security_deposit'),
                 ];
             })
             ->sortByDesc('days_out')
@@ -173,7 +168,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get Income & Expense data
+     * Get Income & Expense data (from the accounting ledger)
      */
     private function getIncomeExpense()
     {
@@ -181,82 +176,48 @@ class DashboardController extends Controller
         $currentMonth = now()->startOfMonth();
         $currentYear = now()->year;
 
-        // Total Income (debit from income accounts)
-        $totalIncome = Transaction::income()
-            ->where('status', 'approved')
-            ->sum('debit');
+        $overall = $this->accountingService->getIncomeStatement();
+        $today_ = $this->accountingService->getIncomeStatement($today, $today);
+        $month = $this->accountingService->getIncomeStatement($currentMonth->format('Y-m-d'), now()->format('Y-m-d'));
 
-        // Total Expense (credit from expense accounts)
-        $totalExpense = Transaction::expense()
-            ->where('status', 'approved')
-            ->sum('credit');
-
-        // Today's Income
-        $todayIncome = Transaction::income()
-            ->whereDate('date', $today)
-            ->where('status', 'approved')
-            ->sum('debit');
-
-        // Today's Expense
-        $todayExpense = Transaction::expense()
-            ->whereDate('date', $today)
-            ->where('status', 'approved')
-            ->sum('credit');
-
-        // This Month Income
-        $monthIncome = Transaction::income()
-            ->where('date', '>=', $currentMonth)
-            ->where('status', 'approved')
-            ->sum('debit');
-
-        // This Month Expense
-        $monthExpense = Transaction::expense()
-            ->where('date', '>=', $currentMonth)
-            ->where('status', 'approved')
-            ->sum('credit');
-
-        // Income by Account (Top 5)
-        $incomeByAccount = Transaction::income()
-            ->where('status', 'approved')
-            ->whereYear('date', $currentYear)
-            ->select('account_id', DB::raw('SUM(debit) as total'))
-            ->groupBy('account_id')
-            ->with('account')
-            ->orderBy('total', 'desc')
-            ->limit(5)
-            ->get()
-            ->map(function ($item) {
-                return (object) [
-                    'account_name' => $item->account->account_name ?? 'N/A',
-                    'total' => $item->total
-                ];
-            });
-
-        // Expense by Account (Top 5)
-        $expenseByAccount = Transaction::expense()
-            ->where('status', 'approved')
+        $incomeByAccount = \App\Models\AccountingEntry::approved()
+            ->whereIn('transaction_type', ['sale', 'income', 'damage'])
             ->whereYear('date', $currentYear)
             ->select('account_id', DB::raw('SUM(credit) as total'))
             ->groupBy('account_id')
+            ->having('total', '>', 0)
             ->with('account')
-            ->orderBy('total', 'desc')
+            ->orderByDesc('total')
             ->limit(5)
             ->get()
-            ->map(function ($item) {
-                return (object) [
-                    'account_name' => $item->account->account_name ?? 'N/A',
-                    'total' => $item->total
-                ];
-            });
+            ->map(fn ($item) => (object) [
+                'account_name' => $item->account->account_name ?? 'N/A',
+                'total' => $item->total,
+            ]);
+
+        $expenseByAccount = \App\Models\AccountingEntry::approved()
+            ->whereIn('transaction_type', ['purchase', 'expense', 'salary'])
+            ->whereYear('date', $currentYear)
+            ->select('account_id', DB::raw('SUM(debit) as total'))
+            ->groupBy('account_id')
+            ->having('total', '>', 0)
+            ->with('account')
+            ->orderByDesc('total')
+            ->limit(5)
+            ->get()
+            ->map(fn ($item) => (object) [
+                'account_name' => $item->account->account_name ?? 'N/A',
+                'total' => $item->total,
+            ]);
 
         return (object) [
-            'total_income' => $totalIncome,
-            'total_expense' => $totalExpense,
-            'net_profit' => $totalIncome - $totalExpense,
-            'today_income' => $todayIncome,
-            'today_expense' => $todayExpense,
-            'month_income' => $monthIncome,
-            'month_expense' => $monthExpense,
+            'total_income' => $overall->total_income,
+            'total_expense' => $overall->total_expense,
+            'net_profit' => $overall->net_profit,
+            'today_income' => $today_->total_income,
+            'today_expense' => $today_->total_expense,
+            'month_income' => $month->total_income,
+            'month_expense' => $month->total_expense,
             'income_by_account' => $incomeByAccount,
             'expense_by_account' => $expenseByAccount,
         ];
@@ -269,40 +230,29 @@ class DashboardController extends Controller
     {
         $months = collect();
         $currentYear = now()->year;
-        
+
         for ($month = 1; $month <= 12; $month++) {
             $startDate = now()->setDate($currentYear, $month, 1)->startOfMonth();
             $endDate = now()->setDate($currentYear, $month, 1)->endOfMonth();
-            
-            // Income from transactions
-            $income = Transaction::income()
-                ->whereBetween('date', [$startDate, $endDate])
-                ->where('status', 'approved')
-                ->sum('debit');
-            
-            // Expense from transactions
-            $expense = Transaction::expense()
-                ->whereBetween('date', [$startDate, $endDate])
-                ->where('status', 'approved')
-                ->sum('credit');
-            
-            // Sales revenue (for comparison)
+
+            $statement = $this->accountingService->getIncomeStatement($startDate->format('Y-m-d'), $endDate->format('Y-m-d'));
+
             $salesRevenue = Sale::whereBetween('date', [$startDate, $endDate])
                 ->where('status', '!=', 'cancelled')
                 ->sum('grand_total');
-            
+
             $months->push([
                 'month' => $startDate->format('M'),
-                'income' => $income,
-                'expense' => $expense,
-                'profit' => $income - $expense,
+                'income' => $statement->total_income,
+                'expense' => $statement->total_expense,
+                'profit' => $statement->net_profit,
                 'sales' => $salesRevenue,
                 'count' => Sale::whereBetween('date', [$startDate, $endDate])
                     ->where('status', '!=', 'cancelled')
                     ->count()
             ]);
         }
-        
+
         return $months;
     }
 
@@ -312,18 +262,18 @@ class DashboardController extends Controller
     private function getCylinderMovement()
     {
         $days = collect();
-        
+
         for ($i = 6; $i >= 0; $i--) {
             $date = now()->subDays($i)->toDateString();
-            
-            $issued = \App\Models\CylinderTransaction::whereDate('transaction_date', $date)
+
+            $issued = CylinderTransaction::whereDate('transaction_date', $date)
                 ->where('transaction_type', 'issued')
                 ->count();
-            
-            $returned = \App\Models\CylinderTransaction::whereDate('transaction_date', $date)
+
+            $returned = CylinderTransaction::whereDate('transaction_date', $date)
                 ->where('transaction_type', 'returned')
                 ->count();
-            
+
             $days->push([
                 'date' => now()->subDays($i)->format('D, d M'),
                 'issued' => $issued,
@@ -331,7 +281,7 @@ class DashboardController extends Controller
                 'net' => $issued - $returned
             ]);
         }
-        
+
         return $days;
     }
 
@@ -340,9 +290,6 @@ class DashboardController extends Controller
      */
     private function getRecentActivity()
     {
-        $activities = collect();
-
-        // Recent Sales
         $sales = Sale::with(['customer'])
             ->where('status', '!=', 'cancelled')
             ->latest()
@@ -361,7 +308,6 @@ class DashboardController extends Controller
                 ];
             });
 
-        // Recent Purchases
         $purchases = Purchase::with(['supplier'])
             ->where('status', '!=', 'cancelled')
             ->latest()
@@ -380,8 +326,7 @@ class DashboardController extends Controller
                 ];
             });
 
-        // Recent Cylinder Transactions
-        $cylinderTrans = \App\Models\CylinderTransaction::with(['cylinder', 'customer'])
+        $cylinderTrans = CylinderTransaction::with(['cylinder', 'customer'])
             ->latest()
             ->limit(5)
             ->get()
@@ -389,21 +334,18 @@ class DashboardController extends Controller
                 return (object) [
                     'type' => 'cylinder',
                     'title' => 'Cylinder ' . ucfirst($transaction->transaction_type),
-                    'description' => $transaction->cylinder->cylinder_number . ' - ' . ($transaction->customer->name ?? 'N/A'),
+                    'description' => ($transaction->cylinder->cylinder_number ?? 'N/A') . ' - ' . ($transaction->customer->name ?? 'N/A'),
                     'amount' => $transaction->damage_charge ?? 0,
                     'date' => $transaction->created_at,
                     'icon' => 'fa-cylinder',
                     'color' => 'yellow',
-                    'url' => route('cylinders.show', $transaction->cylinder)
+                    'url' => route('cylinders.show', $transaction->cylinder_id)
                 ];
             });
 
-        // Merge and sort
-        $activities = $sales->concat($purchases)->concat($cylinderTrans)
+        return $sales->concat($purchases)->concat($cylinderTrans)
             ->sortByDesc('date')
             ->take(10);
-
-        return $activities;
     }
 
     /**
@@ -414,8 +356,6 @@ class DashboardController extends Controller
         return response()->json([
             'stats' => $this->getQuickStats(),
             'incomeExpense' => $this->getIncomeExpense(),
-            'issuedCylinders' => $this->getIssuedCylinders(),
-            'customersWithCylinders' => $this->getCustomersWithCylinders(),
             'monthlyRevenue' => $this->getMonthlyRevenue(),
             'cylinderMovement' => $this->getCylinderMovement(),
         ]);
@@ -424,55 +364,14 @@ class DashboardController extends Controller
     private function getQuickStats()
     {
         $today = now()->toDateString();
-        
+
         return (object) [
             'total_customers' => Customer::where('is_active', true)->count(),
             'total_suppliers' => Supplier::where('is_active', true)->count(),
-            'total_cylinders' => Cylinder::count(),
-            'issued_cylinders' => Cylinder::where('status', 'issued')->count(),
+            'total_cylinders' => Cylinder::sum('stock_quantity'),
+            'issued_cylinders' => Cylinder::sum('issued_quantity'),
             'today_sales' => Sale::whereDate('date', $today)->where('status', '!=', 'cancelled')->sum('grand_total'),
             'month_sales' => Sale::where('date', '>=', now()->startOfMonth())->where('status', '!=', 'cancelled')->sum('grand_total'),
         ];
-    }
-
-    private function getIssuedCylinders()
-    {
-        return Cylinder::with(['currentCustomer', 'gasProduct'])
-            ->where('status', 'issued')
-            ->orderBy('updated_at', 'desc')
-            ->limit(10)
-            ->get()
-            ->map(function ($cylinder) {
-                $lastIssue = $cylinder->transactions()
-                    ->where('transaction_type', 'issued')
-                    ->latest()
-                    ->first();
-                
-                return (object) [
-                    'cylinder_number' => $cylinder->cylinder_number,
-                    'gas_name' => $cylinder->gasProduct->name ?? 'N/A',
-                    'customer_name' => $cylinder->currentCustomer->name ?? 'N/A',
-                    'days_out' => $lastIssue ? $lastIssue->created_at->diffInDays(now()) : 0,
-                ];
-            });
-    }
-
-    private function getCustomersWithCylinders()
-    {
-        return Customer::whereHas('cylinders', function ($q) {
-            $q->where('status', 'issued');
-        })
-        ->with(['cylinders' => function ($q) {
-            $q->where('status', 'issued')->with('gasProduct');
-        }])
-        ->get()
-        ->map(function ($customer) {
-            return (object) [
-                'name' => $customer->name,
-                'phone' => $customer->phone,
-                'total_issued' => $customer->cylinders->count(),
-                'total_deposit' => $customer->security_deposit,
-            ];
-        });
     }
 }

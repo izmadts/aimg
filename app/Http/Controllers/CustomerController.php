@@ -47,9 +47,7 @@ class CustomerController extends Controller
             'total' => Customer::count(),
             'active' => Customer::where('is_active', true)->count(),
             'inactive' => Customer::where('is_active', false)->count(),
-            'with_issued_cylinders' => Customer::whereHas('cylinders', function ($q) {
-                $q->where('status', 'issued');
-            })->count(),
+            'with_issued_cylinders' => Customer::whereHas('activeCylinderIssues')->count(),
         ];
 
         return view('customers.index', compact('customers', 'stats'));
@@ -98,15 +96,13 @@ class CustomerController extends Controller
         // Load relationships
         $customer->load(['sales' => function ($q) {
             $q->latest()->limit(10);
-        }, 'cylinders' => function ($q) {
-            $q->where('status', 'issued');
-        }]);
+        }, 'activeCylinderIssues.cylinder.gasProduct']);
 
         // Get statistics
         $stats = [
             'total_sales' => $customer->sales()->count(),
             'total_sales_amount' => $customer->sales()->where('status', '!=', 'cancelled')->sum('grand_total'),
-            'total_issued_cylinders' => $customer->cylinders()->where('status', 'issued')->count(),
+            'total_issued_cylinders' => $customer->activeCylinderIssues()->sum('quantity'),
             'total_cylinder_transactions' => $customer->cylinderTransactions()->count(),
             'pending_balance' => $customer->sales()->where('payment_status', '!=', 'paid')->sum('balance_due'),
         ];
@@ -174,7 +170,7 @@ class CustomerController extends Controller
                 ->with('error', "Cannot delete '{$customer->name}' because they have sales records.");
         }
 
-        if ($customer->cylinders()->where('status', 'issued')->exists()) {
+        if ($customer->activeCylinderIssues()->exists()) {
             return redirect()->route('customers.index')
                 ->with('error', "Cannot delete '{$customer->name}' because they have issued cylinders.");
         }

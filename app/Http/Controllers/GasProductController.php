@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\GasProduct;
 use App\Models\Cylinder;
+use App\Http\Requests\StoreGasProductRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -63,19 +64,9 @@ class GasProductController extends Controller
     /**
      * Store a newly created gas product in storage.
      */
-    public function store(Request $request)
+    public function store(StoreGasProductRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:gas_products',
-            'uom' => 'required|string|max:20',
-            'purchase_price' => 'required|numeric|min:0',
-            'sale_price' => 'required|numeric|min:0',
-            'current_stock' => 'nullable|numeric|min:0',
-            'minimum_stock_level' => 'nullable|numeric|min:0',
-            'description' => 'nullable|string|max:500',
-            'is_active' => 'boolean'
-        ]);
+        $validated = $request->validated();
 
         $validated['is_active'] = $request->has('is_active');
         $validated['current_stock'] = $validated['current_stock'] ?? 0;
@@ -98,9 +89,9 @@ class GasProductController extends Controller
 
         // Get statistics
         $stats = [
-            'total_cylinders' => $gasProduct->cylinders()->count(),
-            'issued_cylinders' => $gasProduct->cylinders()->where('status', 'issued')->count(),
-            'in_house_cylinders' => $gasProduct->cylinders()->whereIn('status', ['in_house_empty', 'in_house_filled'])->count(),
+            'total_cylinders' => $gasProduct->cylinders()->sum('stock_quantity'),
+            'issued_cylinders' => $gasProduct->cylinders()->sum('issued_quantity'),
+            'in_house_cylinders' => $gasProduct->cylinders()->whereIn('status', ['in_house', 'partial_issued'])->count(),
             'stock_value' => $gasProduct->current_stock * $gasProduct->purchase_price,
         ];
 
@@ -118,19 +109,9 @@ class GasProductController extends Controller
     /**
      * Update the specified gas product in storage.
      */
-    public function update(Request $request, GasProduct $gasProduct)
+    public function update(StoreGasProductRequest $request, GasProduct $gasProduct)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:gas_products,code,' . $gasProduct->id,
-            'uom' => 'required|string|max:20',
-            'purchase_price' => 'required|numeric|min:0',
-            'sale_price' => 'required|numeric|min:0',
-            'current_stock' => 'nullable|numeric|min:0',
-            'minimum_stock_level' => 'nullable|numeric|min:0',
-            'description' => 'nullable|string|max:500',
-            'is_active' => 'boolean'
-        ]);
+        $validated = $request->validated();
 
         $validated['is_active'] = $request->has('is_active');
         $validated['current_stock'] = $validated['current_stock'] ?? 0;
