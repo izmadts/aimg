@@ -38,21 +38,15 @@
         <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             
             <!-- Dashboard -->
-            <a href="{{ route('dashboard') }}" 
+            <a href="{{ route('dashboard') }}"
                class="nav-link {{ $currentRoute === 'dashboard' ? 'active' : '' }}">
                 <i class="fas fa-chart-pie"></i>
                 <span>Dashboard</span>
             </a>
 
-            @can('gas_products.view')
-            <!-- Gas Products -->
-            <a href="{{ route('gas-products.index') }}"
-               class="nav-link {{ Str::startsWith($currentRoute, 'gas-products.') ? 'active' : '' }}">
-                <i class="fas fa-flask"></i>
-                <span>Gas Products</span>
-                <span class="badge">{{ \App\Models\GasProduct::count() }}</span>
-            </a>
-            @endcan
+            @canany(['sales.view', 'purchases.view', 'gas_products.view', 'cylinders.view'])
+            <p class="px-4 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Operations</p>
+            @endcanany
 
             @can('sales.view')
             <!-- Sales -->
@@ -74,6 +68,16 @@
             </a>
             @endcan
 
+            @can('gas_products.view')
+            <!-- Gas Products -->
+            <a href="{{ route('gas-products.index') }}"
+               class="nav-link {{ Str::startsWith($currentRoute, 'gas-products.') ? 'active' : '' }}">
+                <i class="fas fa-flask"></i>
+                <span>Gas Products</span>
+                <span class="badge">{{ \App\Models\GasProduct::count() }}</span>
+            </a>
+            @endcan
+
             @can('cylinders.view')
             <!-- Cylinders -->
             <a href="{{ route('cylinders.index') }}"
@@ -90,10 +94,31 @@
                 </span>
                 @endif
             </a>
+
+            <!-- Tracking -->
+            <a href="{{ route('cylinders.tracking') }}"
+               class="nav-link {{ Str::startsWith($currentRoute, 'cylinders.tracking') ? 'active' : '' }}">
+                <i class="fas fa-search-location"></i>
+                <span>Track Cylinders</span>
+                <span class="badge" style="background: #fef3c7; color: #92400e;">
+                    {{ \App\Models\Cylinder::sum('issued_quantity') }}
+                </span>
+            </a>
+
+            <!-- History -->
+            <a href="{{ route('cylinders.history') }}"
+               class="nav-link {{ Str::startsWith($currentRoute, 'cylinders.history') ? 'active' : '' }}">
+                <i class="fas fa-history"></i>
+                <span>History Tracking</span>
+                <span class="badge" style="background: #dbeafe; color: #1e40af;">
+                    {{ \App\Models\CylinderTransaction::count() }}
+                </span>
+            </a>
             @endcan
 
-            <!-- Divider -->
-            <div class="border-t border-gray-200 my-4"></div>
+            @canany(['customers.view', 'suppliers.view'])
+            <p class="px-4 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Parties</p>
+            @endcanany
 
             @can('customers.view')
             <!-- Customers -->
@@ -115,14 +140,9 @@
             </a>
             @endcan
 
-            @can('hrm.view')
-            <!-- HRM -->
-                <a href="{{ route('hrm.employees') }}"
-                   class="nav-link {{ Str::startsWith($currentRoute, 'hrm.') ? 'active' : '' }}">
-                    <i class="fas fa-users-cog"></i>
-                    <span>HRM</span>
-                </a>
-            @endcan
+            @canany(['accounting.view', 'income_expense.view'])
+            <p class="px-4 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Finance</p>
+            @endcanany
 
             @can('accounting.view')
                 <!-- Accounting -->
@@ -149,27 +169,19 @@
             </a>
             @endcan
 
-            @can('cylinders.view')
-            <!-- Tracking -->
-            <a href="{{ route('cylinders.tracking') }}"
-               class="nav-link {{ Str::startsWith($currentRoute, 'cylinders.tracking') ? 'active' : '' }}">
-                <i class="fas fa-search-location"></i>
-                <span>Track Cylinders</span>
-                <span class="badge" style="background: #fef3c7; color: #92400e;">
-                    {{ \App\Models\Cylinder::sum('issued_quantity') }}
-                </span>
-            </a>
-
-            <!-- History -->
-            <a href="{{ route('cylinders.history') }}"
-               class="nav-link {{ Str::startsWith($currentRoute, 'cylinders.history') ? 'active' : '' }}">
-                <i class="fas fa-history"></i>
-                <span>History Tracking</span>
-                <span class="badge" style="background: #dbeafe; color: #1e40af;">
-                    {{ \App\Models\CylinderTransaction::count() }}
-                </span>
-            </a>
+            @can('hrm.view')
+            <p class="px-4 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Human Resources</p>
+            <!-- HRM -->
+                <a href="{{ route('hrm.employees') }}"
+                   class="nav-link {{ Str::startsWith($currentRoute, 'hrm.') ? 'active' : '' }}">
+                    <i class="fas fa-users-cog"></i>
+                    <span>HRM</span>
+                </a>
             @endcan
+
+            @canany(['users.manage', 'roles.manage', 'units.manage', 'cylinder_types.manage', 'settings.manage'])
+            <p class="px-4 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Administration</p>
+            @endcanany
 
             @can('users.manage')
             <!-- Users -->
