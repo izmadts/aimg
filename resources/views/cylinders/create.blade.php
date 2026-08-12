@@ -57,10 +57,10 @@
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                             onchange="autoDetectPrice()">
                         <option value="">Select Type</option>
-                        <option value="B-D Type" data-premium="500" {{ old('type') == 'B-D Type' ? 'selected' : '' }}>B-D Type</option>
-                        <option value="D-Type" data-premium="800" {{ old('type') == 'D-Type' ? 'selected' : '' }}>D-Type</option>
-                        <option value="Jumbo" data-premium="1500" {{ old('type') == 'Jumbo' ? 'selected' : '' }}>Jumbo</option>
-                        <option value="Small" data-premium="300" {{ old('type') == 'Small' ? 'selected' : '' }}>Small</option>
+                        <option value="Extra Small" data-premium="1500" {{ old('type') == 'Extra Small' ? 'selected' : '' }}>Extra Small (1.7 m3)</option>
+                        <option value="Small" data-premium="2000" {{ old('type') == 'Small' ? 'selected' : '' }}>Small (3.4 m3)</option>
+                        <option value="Medium" data-premium="3000" {{ old('type') == 'Medium' ? 'selected' : '' }}>Medium (8.8 m3)</option>
+                        <option value="Large" data-premium="3500" {{ old('type') == 'Large' ? 'selected' : '' }}>Large (9.9 m3)</option>
                     </select>
                     @error('type')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>

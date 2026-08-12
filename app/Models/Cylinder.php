@@ -445,12 +445,12 @@ class Cylinder extends Model
     private function getCylinderPremium()
     {
         $premiums = [
-            'B-D Type' => 500,
-            'D-Type' => 800,
-            'Jumbo' => 1500,
-            'Small' => 300,
+            'Extra Small' => 1500,
+            'Small' => 2000,
+            'Medium' => 3000,
+            'Large' => 3500,
         ];
-        return $premiums[$this->type] ?? 500;
+        return $premiums[$this->type] ?? 1500;
     }
 
     // ============================================
