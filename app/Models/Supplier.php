@@ -115,8 +115,7 @@ class Supplier extends Model
     public function getCylindersWithSupplierAttribute()
     {
         return $this->cylinders()
-            ->where('status', 'in_house_empty')
-            ->whereNotNull('supplier_id')
+            ->whereIn('status', ['in_house', 'partial_issued'])
             ->get();
     }
 

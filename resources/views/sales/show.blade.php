@@ -218,19 +218,110 @@
     </div>
 </div>
 
-<!-- Payment Modal (Same as index) -->
-<!-- Include payment modal from index or create a separate include -->
+<!-- ============================================
+     PAYMENT MODAL
+     ============================================ -->
+<div id="paymentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-lg font-semibold text-gray-900">
+                <i class="fas fa-money-bill-wave text-green-600 mr-2"></i> Record Payment
+            </h3>
+            <button onclick="closePaymentModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <form id="paymentForm" class="mt-4 space-y-4">
+            @csrf
+            <input type="hidden" name="sale_id" id="payment_sale_id">
+
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                    <p class="text-gray-500">Invoice #</p>
+                    <input type="text" id="payment_invoice_no" disabled class="w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <p class="text-gray-500">Customer</p>
+                    <input type="text" id="payment_customer" disabled class="w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm">
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-3 rounded-lg grid grid-cols-2 gap-2 text-sm">
+                <div>
+                    <p class="text-gray-500">Total Amount</p>
+                    <p class="font-bold" id="payment_total">Rs. 0.00</p>
+                </div>
+                <div>
+                    <p class="text-gray-500">Balance Due</p>
+                    <p class="font-bold text-red-600" id="payment_balance">Rs. 0.00</p>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Payment Amount *</label>
+                <input type="number" step="0.01" name="amount" id="payment_amount" required
+                       class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                       oninput="updatePaymentPreview()">
+                <p class="text-xs text-gray-400 mt-1" id="payment_hint">Max: Rs. 0.00</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method *</label>
+                <select name="payment_method" id="payment_method" required
+                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="cash">💵 Cash</option>
+                    <option value="bank_transfer">🏦 Bank Transfer</option>
+                    <option value="cheque">📝 Cheque</option>
+                    <option value="online">💳 Online Payment</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Payment Date *</label>
+                <input type="date" name="payment_date" id="payment_date" value="{{ date('Y-m-d') }}" required
+                       class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea name="notes" id="payment_notes" rows="2"
+                          class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          placeholder="Optional notes..."></textarea>
+            </div>
+
+            <div id="payment_preview" class="hidden bg-blue-50 p-3 rounded-lg">
+                <p class="text-sm text-gray-700">
+                    After payment: Balance will be <span id="new_balance" class="font-bold">Rs. 0.00</span>
+                </p>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-4 border-t">
+                <button type="button" onclick="closePaymentModal()"
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg transition">
+                    Cancel
+                </button>
+                <button type="submit" id="payment_submit_btn"
+                        class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition">
+                    <i class="fas fa-check mr-2"></i> Record Payment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 @push('scripts')
 <script>
-    // Payment modal functions (same as index)
-    // ... copy payment modal functions from index
+    // ============================================
+    // PAYMENT MODAL FUNCTIONS
+    // ============================================
+    let currentSaleId = null;
+    let currentBalance = 0;
 
-    // Override openPaymentModal for this page
     function openPaymentModal(saleId, invoiceNo, customer, total, balance) {
         currentSaleId = saleId;
         currentBalance = balance;
-        
+
         document.getElementById('payment_sale_id').value = saleId;
         document.getElementById('payment_invoice_no').value = invoiceNo;
         document.getElementById('payment_customer').value = customer;
@@ -239,10 +330,105 @@
         document.getElementById('payment_amount').value = '';
         document.getElementById('payment_amount').max = balance;
         document.getElementById('payment_hint').textContent = 'Max: Rs. ' + balance.toFixed(2);
-        
+        document.getElementById('payment_notes').value = '';
+
         document.getElementById('paymentModal').classList.remove('hidden');
         document.body.classList.add('overflow-hidden');
+        document.getElementById('payment_preview').classList.add('hidden');
+
+        setTimeout(() => {
+            document.getElementById('payment_amount').focus();
+        }, 100);
     }
+
+    function closePaymentModal() {
+        document.getElementById('paymentModal').classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    document.getElementById('paymentModal').addEventListener('click', function(e) {
+        if (e.target === this) closePaymentModal();
+    });
+
+    function updatePaymentPreview() {
+        const amount = parseFloat(document.getElementById('payment_amount').value) || 0;
+        const balance = currentBalance;
+        const preview = document.getElementById('payment_preview');
+        const newBalance = balance - amount;
+
+        if (amount > 0) {
+            preview.classList.remove('hidden');
+            document.getElementById('new_balance').textContent = 'Rs. ' + newBalance.toFixed(2);
+            document.getElementById('new_balance').className = 'font-bold ' + (newBalance > 0 ? 'text-red-600' : 'text-green-600');
+
+            if (amount > balance) {
+                document.getElementById('payment_amount').style.borderColor = '#ef4444';
+                document.getElementById('payment_amount').style.backgroundColor = '#fef2f2';
+            } else {
+                document.getElementById('payment_amount').style.borderColor = '';
+                document.getElementById('payment_amount').style.backgroundColor = '';
+            }
+        } else {
+            preview.classList.add('hidden');
+        }
+    }
+
+    // ============================================
+    // PAYMENT FORM SUBMIT
+    // ============================================
+    document.getElementById('paymentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const amount = parseFloat(document.getElementById('payment_amount').value);
+        const balance = currentBalance;
+
+        if (!amount || amount <= 0) {
+            alert('Please enter a valid payment amount.');
+            return;
+        }
+
+        if (amount > balance) {
+            alert('Payment amount cannot exceed balance due.');
+            return;
+        }
+
+        if (!confirm('Confirm payment of Rs. ' + amount.toFixed(2) + ' for invoice #' + document.getElementById('payment_invoice_no').value + '?')) {
+            return;
+        }
+
+        const formData = new FormData(this);
+        const submitBtn = document.getElementById('payment_submit_btn');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
+        submitBtn.disabled = true;
+
+        fetch('/sales/' + currentSaleId + '/payment', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('✅ ' + data.message);
+                closePaymentModal();
+                location.reload();
+            } else {
+                alert('❌ Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('❌ Error processing payment.');
+            console.error(error);
+        })
+        .finally(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    });
 </script>
 @endpush
 @endsection
