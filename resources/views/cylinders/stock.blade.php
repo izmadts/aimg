@@ -63,7 +63,7 @@
                     <option value="in_house" {{ request('status') == 'in_house' ? 'selected' : '' }}>In House</option>
                     <option value="partial_issued" {{ request('status') == 'partial_issued' ? 'selected' : '' }}>Partial</option>
                     <option value="all_issued" {{ request('status') == 'all_issued' ? 'selected' : '' }}>All Issued</option>
-                    <option value="issued" {{ request('status') == 'issued' ? 'selected' : '' }}>Issued</option>
+                    <option value="out_of_stock" {{ request('status') == 'out_of_stock' ? 'selected' : '' }}>Out of Stock</option>
                 </select>
             </div>
             <div>
@@ -115,15 +115,15 @@
                                 <a href="{{ route('cylinders.show', $cylinder) }}" class="text-blue-600 hover:text-blue-800" title="View">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                @if(!in_array($cylinder->status, ['issued', 'sold', 'all_issued']))
+                                @if($cylinder->issued_quantity == 0)
                                     <a href="{{ route('cylinders.edit', $cylinder) }}" class="text-yellow-600 hover:text-yellow-800" title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <button onclick="openStockModal({{ $cylinder->id }}, '{{ $cylinder->cylinder_number }}', {{ $cylinder->stock_quantity }})" 
-                                            class="text-green-600 hover:text-green-800" title="Update Stock">
-                                        <i class="fas fa-boxes"></i>
-                                    </button>
                                 @endif
+                                <button onclick="openStockModal({{ $cylinder->id }}, '{{ $cylinder->cylinder_number }}', {{ $cylinder->stock_quantity }})"
+                                        class="text-green-600 hover:text-green-800" title="Update Stock">
+                                    <i class="fas fa-boxes"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>

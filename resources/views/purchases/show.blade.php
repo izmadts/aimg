@@ -68,52 +68,58 @@
                         <p class="text-xs text-gray-500">Created By</p>
                         <p class="font-semibold">{{ $purchase->creator->name ?? 'N/A' }}</p>
                     </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Reference No.</p>
+                        <p class="font-semibold">{{ $purchase->reference_no ?? 'N/A' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Payment Method</p>
+                        <p class="font-semibold">{{ ucwords(str_replace('_', ' ', $purchase->payment_method)) }}</p>
+                    </div>
                 </div>
             </div>
 
             <!-- Items Details -->
             <div class="bg-white rounded-lg shadow p-6">
                 <h3 class="text-sm font-semibold text-gray-700 mb-4">📋 Items Details</h3>
-                <div class="space-y-4">
-                    
-                    <!-- Gas Details -->
-                    @if($purchase->gas_product_id)
-                    <div class="border-b border-gray-100 pb-3">
-                        <p class="text-xs text-gray-500">Gas Product</p>
-                        <div class="grid grid-cols-2 gap-4 mt-1">
-                            <div>
-                                <span class="font-semibold">{{ $purchase->gasProduct->name ?? 'N/A' }}</span>
-                                <span class="text-sm text-gray-500 ml-2">({{ $purchase->gasProduct->uom ?? '' }})</span>
+                <div class="space-y-3">
+                    @forelse($purchase->items as $item)
+                        <div class="border border-gray-100 rounded-lg p-3">
+                            @if($item->gas_product_id)
+                            <div class="flex justify-between items-center {{ $item->cylinder_id ? 'border-b border-gray-100 pb-2 mb-2' : '' }}">
+                                <div>
+                                    <p class="text-xs text-gray-400">🧪 Gas</p>
+                                    <span class="font-semibold">{{ $item->gasProduct->name ?? 'N/A' }}</span>
+                                    <span class="text-sm text-gray-500 ml-2">({{ $item->gasProduct->uom ?? '' }})</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-sm">{{ $item->gas_quantity }} × Rs. {{ number_format($item->gas_price, 2) }}</span>
+                                    <span class="font-semibold text-blue-600 ml-2">= Rs. {{ number_format($item->gas_total, 2) }}</span>
+                                </div>
                             </div>
-                            <div class="text-right">
-                                <span class="text-sm">{{ $purchase->gas_quantity }} × Rs. {{ number_format($purchase->gas_price, 2) }}</span>
-                                <span class="font-semibold text-blue-600 ml-2">= Rs. {{ number_format($purchase->gas_total, 2) }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    @endif
+                            @endif
 
-                    <!-- Cylinder Details -->
-                    @if($purchase->cylinder_id)
-                    <div>
-                        <p class="text-xs text-gray-500">Cylinder</p>
-                        <div class="grid grid-cols-2 gap-4 mt-1">
-                            <div>
-                                <span class="font-semibold">{{ $purchase->cylinder->cylinder_number ?? 'N/A' }}</span>
-                                <span class="text-sm text-gray-500 ml-2">({{ $purchase->cylinder_quantity }} pieces)</span>
+                            @if($item->cylinder_id)
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="text-xs text-gray-400">🛢️ Cylinder — {{ $item->cylinder_action_label }}</p>
+                                    <span class="font-semibold">{{ $item->cylinder->cylinder_number ?? 'N/A' }}</span>
+                                    <span class="text-sm text-gray-500 ml-2">({{ $item->cylinder_quantity }} pcs)</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-sm">Rs. {{ number_format($item->cylinder_unit_price, 2) }} each</span>
+                                    <span class="font-semibold text-purple-600 ml-2">= Rs. {{ number_format($item->cylinder_total, 2) }}</span>
+                                </div>
                             </div>
-                            <div class="text-right">
-                                <span class="text-sm">Rs. {{ number_format($purchase->cylinder_purchase_price, 2) }} each</span>
-                                <span class="font-semibold text-purple-600 ml-2">= Rs. {{ number_format($purchase->cylinder_total, 2) }}</span>
-                            </div>
+                            @endif
+
+                            @if($item->notes)
+                                <p class="text-xs text-gray-400 mt-2">📝 {{ $item->notes }}</p>
+                            @endif
                         </div>
-                        @if($purchase->cylinder_sale_price > 0)
-                        <div class="mt-1 text-right text-sm">
-                            <span class="text-gray-500">Sale Price: Rs. {{ number_format($purchase->cylinder_sale_price, 2) }} each</span>
-                        </div>
-                        @endif
-                    </div>
-                    @endif
+                    @empty
+                        <p class="text-gray-500 text-sm">No items found.</p>
+                    @endforelse
                 </div>
             </div>
 
@@ -166,11 +172,11 @@
             @endif
 
             <!-- Accounting Entries -->
-            @if(isset($journalEntries) && $journalEntries->count() > 0)
+            @if(isset($accountingEntries) && $accountingEntries->count() > 0)
             <div class="bg-white rounded-lg shadow p-6">
                 <h3 class="text-sm font-semibold text-gray-700 mb-4">📊 Accounting Entries</h3>
                 <div class="space-y-2">
-                    @foreach($journalEntries as $entry)
+                    @foreach($accountingEntries as $entry)
                     <div class="flex justify-between text-sm border-b border-gray-100 pb-2">
                         <div>
                             <span class="font-mono">{{ $entry->entry_no }}</span>
@@ -199,9 +205,15 @@
                 <h3 class="text-sm font-semibold text-gray-700 mb-4">💰 Summary</h3>
                 <div class="space-y-2">
                     <div class="flex justify-between">
-                        <span class="text-sm text-gray-500">Subtotal</span>
+                        <span class="text-sm text-gray-500">Gas Subtotal</span>
                         <span class="font-semibold">Rs. {{ number_format($purchase->subtotal, 2) }}</span>
                     </div>
+                    @if($purchase->cylinder_total > 0)
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">Cylinder Total</span>
+                        <span class="font-semibold text-purple-600">Rs. {{ number_format($purchase->cylinder_total, 2) }}</span>
+                    </div>
+                    @endif
                     @if($purchase->discount > 0)
                     <div class="flex justify-between">
                         <span class="text-sm text-gray-500">Discount</span>
@@ -229,21 +241,6 @@
                         <span class="text-sm font-bold {{ $purchase->balance_due > 0 ? 'text-red-600' : 'text-green-600' }}">
                             Rs. {{ number_format($purchase->balance_due, 2) }}
                         </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Account Details -->
-            <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-sm font-semibold text-gray-700 mb-4">📋 Account Details</h3>
-                <div class="space-y-2 text-sm">
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Debit Account</span>
-                        <span class="font-semibold text-blue-600">{{ $purchase->debitAccount->account_name ?? 'N/A' }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Credit Account</span>
-                        <span class="font-semibold text-red-600">{{ $purchase->creditAccount->account_name ?? 'N/A' }}</span>
                     </div>
                 </div>
             </div>

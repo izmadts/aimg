@@ -112,17 +112,17 @@
             </div>
 
             <!-- Issued Cylinders -->
-            @if($customer->cylinders->count() > 0)
+            @if($customer->activeCylinderIssues->count() > 0)
             <div class="bg-white rounded-lg shadow p-6">
                 <h3 class="text-sm font-semibold text-gray-700 mb-3">
                     <i class="fas fa-cylinder mr-2 text-yellow-600"></i> Issued Cylinders
                 </h3>
                 <div class="space-y-2">
-                    @foreach($customer->cylinders as $cylinder)
+                    @foreach($customer->activeCylinderIssues as $detail)
                     <div class="flex justify-between text-sm border-b border-gray-100 pb-2">
-                        <span>{{ $cylinder->cylinder_number }}</span>
-                        <span class="text-xs text-gray-500">{{ $cylinder->gasProduct->name ?? 'N/A' }}</span>
-                        <span class="text-xs text-gray-500">{{ $cylinder->updated_at->diffForHumans() }}</span>
+                        <span>{{ $detail->cylinder->cylinder_number ?? 'N/A' }}</span>
+                        <span class="text-xs text-gray-500">{{ $detail->cylinder->gasProduct->name ?? 'N/A' }} × {{ $detail->quantity }}</span>
+                        <span class="text-xs text-gray-500">{{ $detail->days_out }} days out</span>
                     </div>
                     @endforeach
                 </div>

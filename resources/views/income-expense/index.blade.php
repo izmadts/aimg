@@ -68,8 +68,8 @@
             </p>
         </div>
         <div class="bg-white rounded-lg shadow p-4 border-l-4 border-purple-500">
-            <p class="text-xs text-gray-500">Transactions</p>
-            <p class="text-2xl font-bold">{{ $incomeTransactions->count() + $expenseTransactions->count() }}</p>
+            <p class="text-xs text-gray-500">Recent Transactions</p>
+            <p class="text-2xl font-bold">{{ $recentTransactions->count() }}</p>
         </div>
     </div>
 
@@ -196,7 +196,7 @@
                         <td class="px-6 py-3 text-right font-bold {{ $transaction->transaction_type === 'income' ? 'text-green-600' : 'text-red-600' }}">
                             Rs. {{ number_format($transaction->debit ?: $transaction->credit, 2) }}
                         </td>
-                        <td class="px-6 py-3 text-sm">{{ $transaction->reference_no ?? '—' }}</td>
+                        <td class="px-6 py-3 text-xs font-mono">{{ $transaction->entry_no ?? '—' }}</td>
                     </tr>
                     @empty
                     <tr>

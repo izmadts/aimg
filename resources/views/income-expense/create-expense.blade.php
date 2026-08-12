@@ -41,19 +41,17 @@
                     @enderror
                 </div>
 
-                <!-- Bank Account -->
+                <!-- Payment Method -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Bank/Cash Account *</label>
-                    <select name="opposite_account_id" required
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method *</label>
+                    <select name="payment_method" required
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">Select Account</option>
-                        @foreach($bankAccounts as $account)
-                            <option value="{{ $account->id }}" {{ old('opposite_account_id') == $account->id ? 'selected' : '' }}>
-                                {{ $account->account_name }} ({{ $account->account_code }})
-                            </option>
-                        @endforeach
+                        <option value="cash" {{ old('payment_method', 'cash') == 'cash' ? 'selected' : '' }}>💵 Cash</option>
+                        <option value="bank_transfer" {{ old('payment_method') == 'bank_transfer' ? 'selected' : '' }}>🏦 Bank Transfer</option>
+                        <option value="cheque" {{ old('payment_method') == 'cheque' ? 'selected' : '' }}>📝 Cheque</option>
+                        <option value="online" {{ old('payment_method') == 'online' ? 'selected' : '' }}>💳 Online Payment</option>
                     </select>
-                    @error('opposite_account_id')
+                    @error('payment_method')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>

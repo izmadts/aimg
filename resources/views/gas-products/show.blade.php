@@ -128,19 +128,19 @@
                                 <td class="px-6 py-3 text-sm">{{ $cylinder->type }}</td>
                                 <td class="px-6 py-3">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                        @if($cylinder->status === 'in_house_filled') bg-green-100 text-green-800
-                                        @elseif($cylinder->status === 'in_house_empty') bg-gray-100 text-gray-800
-                                        @elseif($cylinder->status === 'issued') bg-yellow-100 text-yellow-800
-                                        @elseif($cylinder->status === 'sold') bg-blue-100 text-blue-800
-                                        @elseif($cylinder->status === 'under_maintenance') bg-orange-100 text-orange-800
-                                        @else bg-red-100 text-red-800
+                                        @if($cylinder->status === 'in_house') bg-blue-100 text-blue-800
+                                        @elseif($cylinder->status === 'partial_issued') bg-yellow-100 text-yellow-800
+                                        @elseif($cylinder->status === 'all_issued') bg-orange-100 text-orange-800
+                                        @elseif($cylinder->status === 'out_of_stock') bg-red-100 text-red-800
+                                        @elseif($cylinder->status === 'under_maintenance') bg-purple-100 text-purple-800
+                                        @else bg-gray-100 text-gray-800
                                         @endif">
                                         {{ $cylinder->status_label }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-3 text-sm">
-                                    @if($cylinder->currentCustomer)
-                                        <span class="text-yellow-600">{{ $cylinder->currentCustomer->name }}</span>
+                                    @if($cylinder->issued_quantity > 0)
+                                        <span class="text-yellow-600">{{ $cylinder->issued_quantity }} issued</span>
                                     @elseif($cylinder->supplier)
                                         <span class="text-blue-600">{{ $cylinder->supplier->name }}</span>
                                     @else

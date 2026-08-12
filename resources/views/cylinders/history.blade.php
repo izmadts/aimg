@@ -29,9 +29,9 @@
             <p class="text-xs text-gray-500">Issued</p>
             <p class="text-xl font-bold text-yellow-600">{{ $stats['issued_cylinders'] }}</p>
         </div>
-        <div class="bg-white rounded-lg shadow p-3 border-l-4 border-blue-500">
-            <p class="text-xs text-gray-500">Sold</p>
-            <p class="text-xl font-bold text-blue-600">{{ $stats['sold_cylinders'] }}</p>
+        <div class="bg-white rounded-lg shadow p-3 border-l-4 border-orange-500">
+            <p class="text-xs text-gray-500">Under Maintenance</p>
+            <p class="text-xl font-bold text-orange-600">{{ $stats['under_maintenance'] }}</p>
         </div>
         <div class="bg-white rounded-lg shadow p-3 border-l-4 border-red-500">
             <p class="text-xs text-gray-500">Scrapped</p>
@@ -98,7 +98,7 @@
                         <span class="font-semibold" id="cylCapacity">-</span>
                     </div>
                     <div>
-                        <span class="text-gray-500">Current Gas:</span>
+                        <span class="text-gray-500">Stock / Issued:</span>
                         <span class="font-semibold" id="cylGasQty">-</span>
                     </div>
                     <div>
@@ -189,7 +189,7 @@
                             </span>
                         </td>
                         <td class="px-6 py-3 text-sm">
-                            {{ $transaction->customer->name ?? ($transaction->supplier->name ?? 'System') }}
+                            {{ $transaction->customer->name ?? 'System' }}
                         </td>
                         <td class="px-6 py-3 text-sm">{{ $transaction->created_at->format('d-m-Y H:i') }}</td>
                         <td class="px-6 py-3 text-sm">
@@ -248,22 +248,22 @@
 
     function getStatusColor(status) {
         const colors = {
-            'in_house_empty': 'bg-gray-100 text-gray-800',
-            'in_house_filled': 'bg-green-100 text-green-800',
-            'issued': 'bg-yellow-100 text-yellow-800',
-            'sold': 'bg-blue-100 text-blue-800',
-            'under_maintenance': 'bg-orange-100 text-orange-800',
-            'scrapped': 'bg-red-100 text-red-800'
+            'in_house': 'bg-blue-100 text-blue-800',
+            'partial_issued': 'bg-yellow-100 text-yellow-800',
+            'all_issued': 'bg-orange-100 text-orange-800',
+            'out_of_stock': 'bg-red-100 text-red-800',
+            'under_maintenance': 'bg-purple-100 text-purple-800',
+            'scrapped': 'bg-gray-100 text-gray-800'
         };
         return colors[status] || 'bg-gray-100 text-gray-800';
     }
 
     function getStatusLabel(status) {
         const labels = {
-            'in_house_empty': 'In House - Empty',
-            'in_house_filled': 'In House - Filled',
-            'issued': 'Issued to Customer',
-            'sold': 'Sold',
+            'in_house': 'In House',
+            'partial_issued': 'Partial Issued',
+            'all_issued': 'All Issued',
+            'out_of_stock': 'Out of Stock',
             'under_maintenance': 'Under Maintenance',
             'scrapped': 'Scrapped'
         };
@@ -403,7 +403,7 @@
             document.getElementById('cylGas').textContent = (data.cylinder.gas_name || 'N/A') + ' (' + formatNumber(data.cylinder.capacity) + ')';
             document.getElementById('cylType').textContent = data.cylinder.type || '-';
             document.getElementById('cylCapacity').textContent = formatNumber(data.cylinder.capacity) + ' KG';
-            document.getElementById('cylGasQty').textContent = formatNumber(data.cylinder.current_gas_quantity) + ' KG';
+            document.getElementById('cylGasQty').textContent = (data.cylinder.stock_quantity ?? 0) + ' / ' + (data.cylinder.issued_quantity ?? 0);
             document.getElementById('cylPrice').textContent = 'Rs. ' + formatCurrency(data.cylinder.purchase_price);
             document.getElementById('totalTransactions').textContent = (data.total_transactions || 0) + ' transactions';
 
@@ -566,267 +566,4 @@
 </script>
 @endpush
 
-
-
-
-
-
-
-
-
-
-
-<?php /* @push('scripts')
-<script>
-    // ============================================
-// VIEW CYLINDER HISTORY
-// ============================================
-function viewHistory() {
-    const cylinderId = document.getElementById('cylinderSelect').value;
-    if (!cylinderId) {
-        alert('Please select a cylinder.');
-        return;
-    }
-    loadHistory(cylinderId);
-}
-
-function loadHistory(cylinderId) {
-    // Show loading
-    document.getElementById('historyResult').classList.remove('hidden');
-    document.getElementById('transactionsBody').innerHTML = `
-        <tr>
-            <td colspan="9" class="px-6 py-8 text-center text-gray-500">
-                <i class="fas fa-spinner fa-spin text-2xl mb-2 block"></i>
-                Loading history...
-            </td>
-        </tr>
-    `;
-    document.getElementById('journeyTimeline').innerHTML = `
-        <div class="text-center text-gray-500 py-4">
-            <i class="fas fa-spinner fa-spin text-2xl mb-2 block"></i>
-            Loading journey...
-        </div>
-    `;
-
-    // ✅ Use the correct route with proper URL
-    const root = "{{url('')}}";
-    const url = `${root}/cylinders/tracking/history/${cylinderId}`;
-    
-    fetch(url, {
-        method: 'GET',
-        headers: {
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (!data.success) {
-            throw new Error(data.message || 'Unknown error');
-        }
-
-        // Update cylinder header
-        document.getElementById('cylNumber').textContent = data.cylinder.number;
-        document.getElementById('cylGas').textContent = data.cylinder.gas_name + ' (' + data.cylinder.capacity + ')';
-        document.getElementById('cylType').textContent = data.cylinder.type || '-';
-        document.getElementById('cylCapacity').textContent = data.cylinder.capacity + ' KG';
-        document.getElementById('cylGasQty').textContent = data.cylinder.current_gas_quantity + ' KG';
-        document.getElementById('cylPrice').textContent = 'Rs. ' + (data.cylinder.purchase_price || 0).toFixed(2);
-        document.getElementById('totalTransactions').textContent = data.total_transactions + ' transactions';
-
-        // Update status
-        const statusEl = document.getElementById('cylStatus');
-        const statusColors = {
-            'in_house_empty': 'bg-gray-100 text-gray-800',
-            'in_house_filled': 'bg-green-100 text-green-800',
-            'issued': 'bg-yellow-100 text-yellow-800',
-            'sold': 'bg-blue-100 text-blue-800',
-            'under_maintenance': 'bg-orange-100 text-orange-800',
-            'scrapped': 'bg-red-100 text-red-800'
-        };
-        statusEl.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ' + 
-            (statusColors[data.cylinder.status] || 'bg-gray-100 text-gray-800');
-        statusEl.innerHTML = '<i class="fas fa-circle text-xs mr-1.5"></i> ' + data.cylinder.status_label;
-
-        // Render journey timeline
-        renderJourney(data.journey);
-
-        // Render transactions
-        renderTransactions(data.transactions);
-
-        // Scroll to result
-        document.getElementById('historyResult').scrollIntoView({ behavior: 'smooth' });
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        document.getElementById('transactionsBody').innerHTML = `
-            <tr>
-                <td colspan="9" class="px-6 py-8 text-center text-red-500">
-                    <i class="fas fa-exclamation-circle text-2xl mb-2 block"></i>
-                    Error loading cylinder history: ${error.message}
-                </td>
-            </tr>
-        `;
-        document.getElementById('journeyTimeline').innerHTML = `
-            <div class="text-center text-red-500 py-4">
-                <i class="fas fa-exclamation-circle text-2xl mb-2 block"></i>
-                Error loading journey
-            </div>
-        `;
-        alert('Error loading cylinder history: ' + error.message);
-    });
-}
-
-    // ============================================
-    // RENDER JOURNEY TIMELINE
-    // ============================================
-    function renderJourney(journey) {
-        const container = document.getElementById('journeyTimeline');
-        
-        if (!journey || journey.length === 0) {
-            container.innerHTML = '<p class="text-gray-500 text-sm">No journey data available.</p>';
-            return;
-        }
-
-        let html = '<div class="relative">';
-        html += '<div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>';
-
-        journey.forEach((item, index) => {
-            const isLast = index === journey.length - 1;
-            const colors = {
-                'purple': 'bg-purple-500',
-                'green': 'bg-green-500',
-                'yellow': 'bg-yellow-500',
-                'blue': 'bg-blue-500',
-                'indigo': 'bg-indigo-500',
-                'orange': 'bg-orange-500',
-                'red': 'bg-red-500',
-                'gray': 'bg-gray-500'
-            };
-            const colorClass = colors[item.color] || 'bg-gray-500';
-            
-            html += `
-                <div class="flex items-start mb-6 relative">
-                    <div class="flex-shrink-0 w-8 h-8 ${colorClass} rounded-full flex items-center justify-center text-white text-xs z-10">
-                        <i class="fas ${item.icon}"></i>
-                    </div>
-                    <div class="ml-4 flex-1">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2">
-                                <span class="font-semibold text-sm">${item.type_label}</span>
-                                <span class="text-xs text-gray-400">${item.date_formatted}</span>
-                            </div>
-                            ${item.party_name ? `<span class="text-xs text-gray-500">${item.party_name}</span>` : ''}
-                        </div>
-                        ${item.remarks ? `<p class="text-sm text-gray-600 mt-1">${item.remarks}</p>` : ''}
-                        ${item.reference ? `<p class="text-xs text-gray-400 mt-1">Reference: ${item.reference}</p>` : ''}
-                    </div>
-                </div>
-            `;
-        });
-
-        html += '</div>';
-        container.innerHTML = html;
-    }
-
-    // ============================================
-    // RENDER TRANSACTIONS
-    // ============================================
-    function renderTransactions(transactions) {
-        const tbody = document.getElementById('transactionsBody');
-        
-        if (!transactions || transactions.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="9" class="px-6 py-8 text-center text-gray-500">
-                        No transactions found for this cylinder.
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
-        let html = '';
-        transactions.forEach(trans => {
-            const typeColors = {
-                'issued': 'bg-yellow-100 text-yellow-800',
-                'returned': 'bg-green-100 text-green-800',
-                'sold': 'bg-blue-100 text-blue-800',
-                'purchased': 'bg-purple-100 text-purple-800',
-                'filled': 'bg-green-100 text-green-800',
-                'emptied': 'bg-gray-100 text-gray-800',
-                'maintenance_in': 'bg-orange-100 text-orange-800',
-                'maintenance_out': 'bg-blue-100 text-blue-800',
-                'scrapped': 'bg-red-100 text-red-800',
-                'received_filled': 'bg-green-100 text-green-800',
-                'received_empty': 'bg-gray-100 text-gray-800',
-                'returned_empty': 'bg-orange-100 text-orange-800',
-                'exchanged': 'bg-purple-100 text-purple-800'
-            };
-            const colorClass = typeColors[trans.type] || 'bg-gray-100 text-gray-800';
-
-            const partyName = trans.customer ? trans.customer.name : (trans.supplier ? trans.supplier.name : 'System');
-            const referenceHtml = trans.reference_url 
-                ? `<a href="${trans.reference_url}" target="_blank" class="text-blue-600 hover:underline">${trans.reference_document}</a>`
-                : (trans.reference_document || '—');
-
-            html += `
-                <tr class="hover:bg-gray-50 transition">
-                    <td class="px-6 py-3 text-sm">${trans.date_formatted}</td>
-                    <td class="px-6 py-3">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colorClass}">
-                            ${trans.type_label}
-                        </span>
-                    </td>
-                    <td class="px-6 py-3 text-sm">${partyName}</td>
-                    <td class="px-6 py-3 text-sm">${trans.user ? trans.user.name : 'N/A'}</td>
-                    <td class="px-6 py-3 text-right text-sm">${trans.gas_quantity || 0}</td>
-                    <td class="px-6 py-3 text-right text-sm">${trans.security_deposit_charged || 0}</td>
-                    <td class="px-6 py-3 text-right text-sm text-red-600">${trans.damage_charge || 0}</td>
-                    <td class="px-6 py-3 text-sm">${referenceHtml}</td>
-                    <td class="px-6 py-3 text-sm text-gray-500">${trans.remarks || '—'}</td>
-                </tr>
-            `;
-        });
-
-        tbody.innerHTML = html;
-    }
-
-    // ============================================
-    // EXPORT HISTORY
-    // ============================================
-    function exportHistory() {
-        const cylinderId = document.getElementById('cylinderSelect').value;
-        if (!cylinderId) {
-            alert('Please select a cylinder to export.');
-            return;
-        }
-        window.location.href = `/cylinders/tracking/history/export?cylinder_id=${cylinderId}`;
-    }
-
-    // ============================================
-    // AUTO-LOAD FIRST CYLINDER
-    // ============================================
-    document.addEventListener('DOMContentLoaded', function() {
-        const select = document.getElementById('cylinderSelect');
-        if (select.options.length > 1) {
-            // Auto-load first cylinder with issued status
-            for (let i = 0; i < select.options.length; i++) {
-                if (select.options[i].text.includes('issued')) {
-                    select.selectedIndex = i;
-                    break;
-                }
-            }
-            // loadHistory(select.value);
-        }
-    });
-</script>
-
-@endpush
-*/ ?>
 @endsection

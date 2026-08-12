@@ -30,6 +30,11 @@
         .badge-purchased { background: #f3e8ff; color: #6d28d9; }
         .badge-maintenance { background: #fed7aa; color: #9a3412; }
         .badge-scrapped { background: #fee2e2; color: #991b1b; }
+        .badge-in_house { background: #dbeafe; color: #1e40af; }
+        .badge-partial_issued { background: #fef3c7; color: #92400e; }
+        .badge-all_issued { background: #fed7aa; color: #9a3412; }
+        .badge-out_of_stock { background: #fee2e2; color: #991b1b; }
+        .badge-under_maintenance { background: #fed7aa; color: #9a3412; }
         @media print { .no-print { display: none; } }
     </style>
 </head>
@@ -58,8 +63,8 @@
             <tr>
                 <td class="label">Capacity:</td>
                 <td>{{ $cylinder->capacity }} KG</td>
-                <td class="label">Current Gas:</td>
-                <td>{{ $cylinder->current_gas_quantity }} KG</td>
+                <td class="label">Tare Weight:</td>
+                <td>{{ $cylinder->tare_weight ?? 'N/A' }} KG</td>
             </tr>
             <tr>
                 <td class="label">Purchase Price:</td>
@@ -68,17 +73,11 @@
                 <td>{{ $cylinder->purchase_date?->format('d-m-Y') ?? 'N/A' }}</td>
             </tr>
             <tr>
-                <td class="label">Last Hydro Test:</td>
-                <td>{{ $cylinder->last_hydro_test_date?->format('d-m-Y') ?? 'N/A' }}</td>
-                <td class="label">Next Hydro Test:</td>
-                <td>{{ $cylinder->next_hydro_test_date?->format('d-m-Y') ?? 'N/A' }}</td>
+                <td class="label">Stock Quantity:</td>
+                <td>{{ $cylinder->stock_quantity }}</td>
+                <td class="label">Issued Quantity:</td>
+                <td>{{ $cylinder->issued_quantity }}</td>
             </tr>
-            @if($cylinder->currentCustomer)
-            <tr>
-                <td class="label">Current Customer:</td>
-                <td colspan="3"><strong>{{ $cylinder->currentCustomer->name }}</strong> ({{ $cylinder->currentCustomer->phone ?? 'N/A' }})</td>
-            </tr>
-            @endif
         </table>
     </div>
 
@@ -120,7 +119,7 @@
             <tr>
                 <td>{{ $transaction->created_at->format('d-m-Y H:i') }}</td>
                 <td><span class="badge badge-{{ $transaction->transaction_type }}">{{ $transaction->type_label }}</span></td>
-                <td>{{ $transaction->customer->name ?? ($transaction->supplier->name ?? 'System') }}</td>
+                <td>{{ $transaction->customer->name ?? 'System' }}</td>
                 <td>{{ $transaction->user->name ?? 'N/A' }}</td>
                 <td style="text-align: right;">{{ $transaction->gas_quantity_at_transaction ?? 0 }}</td>
                 <td style="text-align: right;">{{ number_format($transaction->security_deposit_charged ?? 0, 2) }}</td>

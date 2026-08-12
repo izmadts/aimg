@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice #{{ $sale->invoice_no }}</title>
+    <title>Purchase Order #{{ $purchase->purchase_invoice_no }}</title>
     <style>
         /* ============================================
            PRINT STYLES
@@ -13,7 +13,7 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Arial', 'Helvetica', sans-serif;
             font-size: 12px;
@@ -21,7 +21,7 @@
             background: #ffffff;
             padding: 20px;
         }
-        
+
         .invoice-container {
             max-width: 800px;
             margin: 0 auto;
@@ -29,7 +29,7 @@
             padding: 30px;
             border: 1px solid #e5e7eb;
         }
-        
+
         /* ============================================
            HEADER
            ============================================ */
@@ -41,34 +41,34 @@
             padding-bottom: 20px;
             margin-bottom: 20px;
         }
-        
+
         .company-info h1 {
             font-size: 24px;
             color: #1a1a2e;
             margin-bottom: 5px;
         }
-        
+
         .company-info p {
             color: #4b5563;
             font-size: 11px;
             line-height: 1.5;
         }
-        
+
         .invoice-title {
             text-align: right;
         }
-        
+
         .invoice-title h2 {
             font-size: 22px;
             color: #1a1a2e;
             margin-bottom: 5px;
         }
-        
+
         .invoice-title .invoice-no {
             font-size: 14px;
             color: #4b5563;
         }
-        
+
         /* ============================================
            BILL TO / DETAILS
            ============================================ */
@@ -79,7 +79,7 @@
             padding-bottom: 15px;
             border-bottom: 1px solid #e5e7eb;
         }
-        
+
         .bill-to h3,
         .invoice-details h3 {
             font-size: 12px;
@@ -88,27 +88,27 @@
             letter-spacing: 1px;
             margin-bottom: 5px;
         }
-        
+
         .bill-to p {
             font-size: 13px;
             line-height: 1.6;
         }
-        
+
         .invoice-details .detail-row {
             display: flex;
             justify-content: space-between;
             padding: 3px 0;
         }
-        
+
         .invoice-details .label {
             color: #6b7280;
             margin-right: 30px;
         }
-        
+
         .invoice-details .value {
             font-weight: 600;
         }
-        
+
         /* ============================================
            ITEMS TABLE
            ============================================ */
@@ -117,7 +117,7 @@
             border-collapse: collapse;
             margin-bottom: 20px;
         }
-        
+
         .items-table thead th {
             background: #f3f4f6;
             padding: 10px 12px;
@@ -128,24 +128,24 @@
             color: #4b5563;
             border-bottom: 2px solid #d1d5db;
         }
-        
+
         .items-table thead th.text-right {
             text-align: right;
         }
-        
+
         .items-table tbody td {
             padding: 8px 12px;
             border-bottom: 1px solid #e5e7eb;
         }
-        
+
         .items-table tbody td.text-right {
             text-align: right;
         }
-        
+
         .items-table tbody tr:last-child td {
             border-bottom: none;
         }
-        
+
         /* ============================================
            TOTALS
            ============================================ */
@@ -154,26 +154,26 @@
             justify-content: flex-end;
             margin-top: 10px;
         }
-        
+
         .totals-table {
             width: 300px;
             border-collapse: collapse;
         }
-        
+
         .totals-table td {
             padding: 5px 10px;
             text-align: right;
         }
-        
+
         .totals-table .label {
             color: #4b5563;
             padding-right: 20px;
         }
-        
+
         .totals-table .amount {
             font-weight: 600;
         }
-        
+
         .totals-table .grand-total td {
             font-size: 16px;
             font-weight: 700;
@@ -181,11 +181,11 @@
             border-top: 2px solid #1a1a2e;
             color: #1a1a2e;
         }
-        
+
         .totals-table .grand-total .label {
             color: #1a1a2e;
         }
-        
+
         /* ============================================
            FOOTER
            ============================================ */
@@ -196,17 +196,17 @@
             display: flex;
             justify-content: space-between;
         }
-        
+
         .footer-left {
             font-size: 11px;
             color: #6b7280;
             line-height: 1.6;
         }
-        
+
         .footer-right {
             text-align: right;
         }
-        
+
         .footer-right .signature-line {
             width: 150px;
             border-top: 1px solid #1a1a2e;
@@ -215,7 +215,7 @@
             font-size: 11px;
             color: #4b5563;
         }
-        
+
         /* ============================================
            STATUS BADGES (Print)
            ============================================ */
@@ -228,44 +228,44 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        
+
         .badge-print.confirmed {
             background: #dcfce7;
             color: #166534;
         }
-        
+
         .badge-print.draft {
             background: #fef3c7;
             color: #92400e;
         }
-        
+
         .badge-print.cancelled {
             background: #fee2e2;
             color: #991b1b;
         }
-        
+
         .badge-print.paid {
             background: #dcfce7;
             color: #166534;
         }
-        
+
         .badge-print.unpaid {
             background: #fee2e2;
             color: #991b1b;
         }
-        
+
         .badge-print.partial {
             background: #fef3c7;
             color: #92400e;
         }
-        
+
         /* ============================================
            PRINT HIDE
            ============================================ */
         .no-print {
             display: none !important;
         }
-        
+
         @media print {
             body {
                 padding: 0;
@@ -293,7 +293,7 @@
 </head>
 <body>
     <div class="invoice-container">
-        
+
         <!-- ==========================================
         HEADER
         ========================================== -->
@@ -305,14 +305,14 @@
                 <p>NTN: 1234567-8 | GST: 9876543-2</p>
             </div>
             <div class="invoice-title">
-                <h2>SALE INVOICE</h2>
-                <p class="invoice-no">#{{ $sale->invoice_no }}</p>
+                <h2>PURCHASE ORDER</h2>
+                <p class="invoice-no">#{{ $purchase->purchase_invoice_no }}</p>
                 <div style="margin-top: 8px;">
-                    <span class="badge-print {{ $sale->status }}">
-                        {{ ucfirst($sale->status) }}
+                    <span class="badge-print {{ $purchase->status }}">
+                        {{ ucfirst($purchase->status) }}
                     </span>
-                    <span class="badge-print {{ $sale->payment_status }}">
-                        {{ ucfirst($sale->payment_status) }}
+                    <span class="badge-print {{ $purchase->payment_status }}">
+                        {{ ucfirst($purchase->payment_status) }}
                     </span>
                 </div>
             </div>
@@ -323,40 +323,34 @@
         ========================================== -->
         <div class="details-section">
             <div class="bill-to">
-                <h3>Bill To</h3>
+                <h3>Supplier</h3>
                 <p>
-                    <strong>{{ $sale->customer->name ?? 'N/A' }}</strong><br>
-                    {{ $sale->customer->address ?? '' }}<br>
-                    Phone: {{ $sale->customer->phone ?? 'N/A' }}<br>
-                    Email: {{ $sale->customer->email ?? 'N/A' }}<br>
-                    @if($sale->customer->cnic)
-                        CNIC: {{ $sale->customer->cnic }}<br>
-                    @endif
-                    @if($sale->customer->ntn_number)
-                        NTN: {{ $sale->customer->ntn_number }}
-                    @endif
+                    <strong>{{ $purchase->supplier->name ?? 'N/A' }}</strong><br>
+                    {{ $purchase->supplier->address ?? '' }}<br>
+                    Phone: {{ $purchase->supplier->phone ?? 'N/A' }}<br>
+                    Email: {{ $purchase->supplier->email ?? 'N/A' }}
                 </p>
             </div>
             <div class="invoice-details">
-                <h3>Invoice Details</h3>
+                <h3>Purchase Details</h3>
                 <div class="detail-row">
-                    <span class="label">Invoice Date</span>
-                    <span class="value">{{ $sale->date->format('d-m-Y') }}</span>
+                    <span class="label">PO Date</span>
+                    <span class="value">{{ $purchase->date->format('d-m-Y') }}</span>
                 </div>
-                @if($sale->delivery_date)
+                @if($purchase->delivery_date)
                 <div class="detail-row">
                     <span class="label">Delivery Date</span>
-                    <span class="value">{{ $sale->delivery_date->format('d-m-Y') }}</span>
+                    <span class="value">{{ $purchase->delivery_date->format('d-m-Y') }}</span>
                 </div>
                 @endif
                 <div class="detail-row">
-                    <span class="label">Created By</span>
-                    <span class="value">{{ $sale->creator->name ?? 'N/A' }}</span>
+                    <span class="label">Purchase Type</span>
+                    <span class="value">{{ $purchase->purchase_type_label }}</span>
                 </div>
-                @if($sale->reference_no)
+                @if($purchase->reference_no)
                 <div class="detail-row">
                     <span class="label">Ref #</span>
-                    <span class="value">{{ $sale->reference_no }}</span>
+                    <span class="value">{{ $purchase->reference_no }}</span>
                 </div>
                 @endif
             </div>
@@ -376,7 +370,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($sale->items as $index => $item)
+                @forelse($purchase->items as $index => $item)
                 @if($item->gas_product_id)
                 <tr>
                     <td>{{ $index + 1 }}</td>
@@ -421,39 +415,39 @@
         <div class="totals-section">
             <table class="totals-table">
                 <tr>
-                    <td class="label">Subtotal</td>
-                    <td class="amount">Rs. {{ number_format($sale->subtotal, 2) }}</td>
+                    <td class="label">Gas Subtotal</td>
+                    <td class="amount">Rs. {{ number_format($purchase->subtotal, 2) }}</td>
                 </tr>
-                @if($sale->cylinder_deposit_total > 0)
+                @if($purchase->cylinder_total > 0)
                 <tr>
-                    <td class="label">Cylinder Deposit</td>
-                    <td class="amount" style="color: #d97706;">Rs. {{ number_format($sale->cylinder_deposit_total, 2) }}</td>
+                    <td class="label">Cylinder Total</td>
+                    <td class="amount" style="color: #7c3aed;">Rs. {{ number_format($purchase->cylinder_total, 2) }}</td>
                 </tr>
                 @endif
-                @if($sale->discount > 0)
+                @if($purchase->discount > 0)
                 <tr>
                     <td class="label" style="color: #dc2626;">Discount</td>
-                    <td class="amount" style="color: #dc2626;">- Rs. {{ number_format($sale->discount, 2) }}</td>
+                    <td class="amount" style="color: #dc2626;">- Rs. {{ number_format($purchase->discount, 2) }}</td>
                 </tr>
                 @endif
-                @if($sale->tax > 0)
+                @if($purchase->tax > 0)
                 <tr>
                     <td class="label">Tax</td>
-                    <td class="amount">Rs. {{ number_format($sale->tax, 2) }}</td>
+                    <td class="amount">Rs. {{ number_format($purchase->tax, 2) }}</td>
                 </tr>
                 @endif
                 <tr class="grand-total">
                     <td class="label">GRAND TOTAL</td>
-                    <td class="amount">Rs. {{ number_format($sale->grand_total, 2) }}</td>
+                    <td class="amount">Rs. {{ number_format($purchase->grand_total, 2) }}</td>
                 </tr>
-                @if($sale->amount_paid > 0)
+                @if($purchase->amount_paid > 0)
                 <tr>
                     <td class="label" style="color: #2563eb;">Amount Paid</td>
-                    <td class="amount" style="color: #2563eb;">Rs. {{ number_format($sale->amount_paid, 2) }}</td>
+                    <td class="amount" style="color: #2563eb;">Rs. {{ number_format($purchase->amount_paid, 2) }}</td>
                 </tr>
                 <tr>
                     <td class="label" style="color: #dc2626; font-weight: 700;">Balance Due</td>
-                    <td class="amount" style="color: #dc2626; font-weight: 700;">Rs. {{ number_format($sale->balance_due, 2) }}</td>
+                    <td class="amount" style="color: #dc2626; font-weight: 700;">Rs. {{ number_format($purchase->balance_due, 2) }}</td>
                 </tr>
                 @endif
             </table>
@@ -462,24 +456,13 @@
         <!-- ==========================================
         NOTES
         ========================================== -->
-        @if($sale->notes)
+        @if($purchase->notes)
         <div style="margin-top: 15px; padding: 10px 15px; background: #f9fafb; border-radius: 6px;">
             <p style="font-size: 11px; color: #4b5563;">
-                <strong>Notes:</strong> {{ $sale->notes }}
+                <strong>Notes:</strong> {{ $purchase->notes }}
             </p>
         </div>
         @endif
-
-        <!-- ==========================================
-        TERMS & CONDITIONS
-        ========================================== -->
-        <div style="margin-top: 20px; font-size: 10px; color: #6b7280; line-height: 1.6; border-top: 1px solid #e5e7eb; padding-top: 15px;">
-            <p><strong>Terms & Conditions:</strong></p>
-            <p>1. Payment is due within 15 days from the date of invoice.</p>
-            <p>2. Cylinders remain the property of Medical Gas ERP until full payment is received.</p>
-            <p>3. Any damage to cylinders will be charged to the customer.</p>
-            <p>4. Please return empty cylinders within 7 days of delivery.</p>
-        </div>
 
         <!-- ==========================================
         FOOTER
@@ -501,7 +484,7 @@
                 <div class="signature-line">
                     <p style="text-align: center;">Authorized Signature</p>
                 </div>
-                <p style="font-size: 10px; color: #9ca3af; margin-top: 8px;">This is a computer generated invoice.</p>
+                <p style="font-size: 10px; color: #9ca3af; margin-top: 8px;">This is a computer generated document.</p>
             </div>
         </div>
 
@@ -520,7 +503,7 @@
                 cursor: pointer;
                 margin: 0 10px;
             ">
-                🖨️ Print Invoice
+                🖨️ Print Purchase Order
             </button>
             <button onclick="window.close()" style="
                 background: #6b7280;

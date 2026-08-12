@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="space-y-6">
-    
+
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
@@ -25,7 +25,7 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
+
         <!-- Assets -->
         <div class="bg-white rounded-lg shadow">
             <div class="px-6 py-4 border-b border-gray-200 bg-blue-50">
@@ -34,8 +34,8 @@
             <div class="p-4">
                 @forelse($balanceSheet->assets as $asset)
                     <div class="flex justify-between py-2 border-b border-gray-100 text-sm">
-                        <span>{{ $asset['account']->account_name }}</span>
-                        <span class="font-semibold">Rs. {{ number_format($asset['balance'], 2) }}</span>
+                        <span>{{ $asset->account_name }} <span class="text-xs text-gray-400 font-mono">{{ $asset->account_code }}</span></span>
+                        <span class="font-semibold">Rs. {{ number_format($asset->balance, 2) }}</span>
                     </div>
                 @empty
                     <p class="text-gray-500 text-sm">No assets found.</p>
@@ -49,7 +49,7 @@
 
         <!-- Liabilities & Equity -->
         <div class="space-y-6">
-            
+
             <!-- Liabilities -->
             <div class="bg-white rounded-lg shadow">
                 <div class="px-6 py-4 border-b border-gray-200 bg-red-50">
@@ -58,8 +58,8 @@
                 <div class="p-4">
                     @forelse($balanceSheet->liabilities as $liability)
                         <div class="flex justify-between py-2 border-b border-gray-100 text-sm">
-                            <span>{{ $liability['account']->account_name }}</span>
-                            <span class="font-semibold">Rs. {{ number_format($liability['balance'], 2) }}</span>
+                            <span>{{ $liability->account_name }} <span class="text-xs text-gray-400 font-mono">{{ $liability->account_code }}</span></span>
+                            <span class="font-semibold">Rs. {{ number_format($liability->balance, 2) }}</span>
                         </div>
                     @empty
                         <p class="text-gray-500 text-sm">No liabilities found.</p>
@@ -79,12 +79,18 @@
                 <div class="p-4">
                     @forelse($balanceSheet->equity as $equity)
                         <div class="flex justify-between py-2 border-b border-gray-100 text-sm">
-                            <span>{{ $equity['account']->account_name }}</span>
-                            <span class="font-semibold">Rs. {{ number_format($equity['balance'], 2) }}</span>
+                            <span>{{ $equity->account_name }} <span class="text-xs text-gray-400 font-mono">{{ $equity->account_code }}</span></span>
+                            <span class="font-semibold">Rs. {{ number_format($equity->balance, 2) }}</span>
                         </div>
                     @empty
-                        <p class="text-gray-500 text-sm">No equity found.</p>
+                        <p class="text-gray-500 text-sm">No equity accounts found.</p>
                     @endforelse
+                    <div class="flex justify-between py-2 border-b border-gray-100 text-sm">
+                        <span>Current Earnings (Net Profit/Loss)</span>
+                        <span class="font-semibold {{ $balanceSheet->current_earnings >= 0 ? '' : 'text-red-600' }}">
+                            Rs. {{ number_format($balanceSheet->current_earnings, 2) }}
+                        </span>
+                    </div>
                     <div class="flex justify-between py-3 border-t-2 border-purple-500 font-bold text-purple-700">
                         <span>TOTAL EQUITY</span>
                         <span>Rs. {{ number_format($balanceSheet->total_equity, 2) }}</span>
@@ -93,22 +99,22 @@
             </div>
 
             <!-- Summary -->
-            <div class="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
+            <div class="bg-white rounded-lg shadow p-4 border-l-4 {{ $balanceSheet->is_balanced ? 'border-green-500' : 'border-red-500' }}">
                 <div class="flex justify-between text-sm">
                     <span class="font-bold text-gray-700">Total Assets</span>
                     <span class="font-bold text-blue-600">Rs. {{ number_format($balanceSheet->total_assets, 2) }}</span>
                 </div>
                 <div class="flex justify-between text-sm mt-1">
                     <span class="font-bold text-gray-700">Total Liabilities + Equity</span>
-                    <span class="font-bold text-purple-600">Rs. {{ number_format($balanceSheet->total_liabilities + $balanceSheet->total_equity, 2) }}</span>
+                    <span class="font-bold text-purple-600">Rs. {{ number_format($balanceSheet->total_liabilities_and_equity, 2) }}</span>
                 </div>
                 <div class="flex justify-between mt-2 pt-2 border-t border-gray-200">
                     <span class="font-bold text-gray-700">Difference</span>
-                    <span class="font-bold {{ ($balanceSheet->total_assets - ($balanceSheet->total_liabilities + $balanceSheet->total_equity)) == 0 ? 'text-green-600' : 'text-red-600' }}">
-                        Rs. {{ number_format($balanceSheet->total_assets - ($balanceSheet->total_liabilities + $balanceSheet->total_equity), 2) }}
+                    <span class="font-bold {{ $balanceSheet->is_balanced ? 'text-green-600' : 'text-red-600' }}">
+                        Rs. {{ number_format($balanceSheet->total_assets - $balanceSheet->total_liabilities_and_equity, 2) }}
                     </span>
                 </div>
-                @if(($balanceSheet->total_assets - ($balanceSheet->total_liabilities + $balanceSheet->total_equity)) == 0)
+                @if($balanceSheet->is_balanced)
                     <p class="text-xs text-green-600 mt-2">✅ Balance Sheet is balanced!</p>
                 @else
                     <p class="text-xs text-red-600 mt-2">⚠️ Balance Sheet is not balanced!</p>

@@ -75,7 +75,7 @@
                 <i class="fas fa-cylinder"></i>
                 <span>Cylinders</span>
                 <span class="badge" style="background: #fef3c7; color: #92400e;">
-                    {{ \App\Models\Cylinder::where('status', 'issued')->count() }}
+                    {{ \App\Models\Cylinder::sum('issued_quantity') }}
                 </span>
             </a>
 
@@ -85,7 +85,7 @@
                 <i class="fas fa-warehouse"></i>
                 <span>Cylinder Stock</span>
                 <span class="badge" style="background: #dbeafe; color: #1e40af;">
-                    {{ \App\Models\Cylinder::whereIn('status', ['in_house_empty', 'in_house_filled'])->count() }}
+                    {{ \App\Models\Cylinder::whereIn('status', ['in_house', 'partial_issued'])->count() }}
                 </span>
             </a>
             
@@ -144,7 +144,7 @@
                 <i class="fas fa-search-location"></i>
                 <span>Track Cylinders</span>
                 <span class="badge" style="background: #fef3c7; color: #92400e;">
-                    {{ \App\Models\Cylinder::where('status', 'issued')->count() }}
+                    {{ \App\Models\Cylinder::sum('issued_quantity') }}
                 </span>
             </a>
 

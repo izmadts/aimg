@@ -71,29 +71,71 @@
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="text-sm font-semibold text-gray-700">📋 Items</h3>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            @foreach($sale->items as $item)
-                            <tr>
-                                <td class="px-6 py-3 text-sm">{{ $item->gasProduct->name ?? 'N/A' }}</td>
-                                <td class="px-6 py-3 text-right">{{ number_format($item->quantity, 2) }}</td>
-                                <td class="px-6 py-3 text-right">Rs. {{ number_format($item->price, 2) }}</td>
-                                <td class="px-6 py-3 text-right font-semibold">Rs. {{ number_format($item->total, 2) }}</td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                <div class="divide-y divide-gray-100">
+                    @forelse($sale->items as $item)
+                        <div class="px-6 py-4">
+                            @if($item->gas_product_id)
+                            <div class="flex justify-between items-center {{ $item->cylinder_id ? 'border-b border-gray-100 pb-2 mb-2' : '' }}">
+                                <div>
+                                    <p class="text-xs text-gray-400">🧪 Gas</p>
+                                    <span class="font-semibold">{{ $item->gasProduct->name ?? 'N/A' }}</span>
+                                    <span class="text-sm text-gray-500 ml-2">({{ $item->gasProduct->uom ?? '' }})</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-sm">{{ number_format($item->gas_quantity, 2) }} × Rs. {{ number_format($item->gas_price, 2) }}</span>
+                                    <span class="font-semibold text-blue-600 ml-2">= Rs. {{ number_format($item->gas_total, 2) }}</span>
+                                </div>
+                            </div>
+                            @endif
+
+                            @if($item->cylinder_id)
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="text-xs text-gray-400">🛢️ Cylinder — {{ $item->cylinder_action_label }}</p>
+                                    <span class="font-semibold">{{ $item->cylinder->cylinder_number ?? 'N/A' }}</span>
+                                    <span class="text-sm text-gray-500 ml-2">({{ $item->cylinder_quantity }} pcs)</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-sm">Rs. {{ number_format($item->cylinder_unit_price, 2) }} each</span>
+                                    <span class="font-semibold text-purple-600 ml-2">= Rs. {{ number_format($item->cylinder_total, 2) }}</span>
+                                </div>
+                            </div>
+                            @endif
+
+                            @if($item->notes)
+                                <p class="text-xs text-gray-400 mt-2">📝 {{ $item->notes }}</p>
+                            @endif
+                        </div>
+                    @empty
+                        <div class="px-6 py-8 text-center text-gray-500">No items found.</div>
+                    @endforelse
                 </div>
             </div>
+
+            <!-- Accounting Entries -->
+            @if(isset($accountingEntries) && $accountingEntries->count() > 0)
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-sm font-semibold text-gray-700 mb-4">📊 Accounting Entries</h3>
+                <div class="space-y-2">
+                    @foreach($accountingEntries as $entry)
+                    <div class="flex justify-between text-sm border-b border-gray-100 pb-2">
+                        <div>
+                            <span class="font-mono">{{ $entry->entry_no }}</span>
+                            <span class="text-gray-500 ml-2">{{ $entry->description }}</span>
+                        </div>
+                        <div>
+                            @if($entry->debit > 0)
+                                <span class="text-red-600">Dr: Rs. {{ number_format($entry->debit, 2) }}</span>
+                            @endif
+                            @if($entry->credit > 0)
+                                <span class="text-green-600 ml-2">Cr: Rs. {{ number_format($entry->credit, 2) }}</span>
+                            @endif
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
         </div>
 
         <!-- Right Column -->

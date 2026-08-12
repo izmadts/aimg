@@ -43,12 +43,8 @@
             <p class="text-lg font-bold text-orange-600">{{ $stats['all_issued'] }}</p>
         </div>
         <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-red-500">
-            <p class="text-xs text-gray-500">Issued</p>
-            <p class="text-lg font-bold text-red-600">{{ $stats['issued'] }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-green-500">
-            <p class="text-xs text-gray-500">Sold</p>
-            <p class="text-lg font-bold text-green-600">{{ $stats['sold'] }}</p>
+            <p class="text-xs text-gray-500">Out of Stock</p>
+            <p class="text-lg font-bold text-red-600">{{ $stats['out_of_stock'] }}</p>
         </div>
         <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-purple-500">
             <p class="text-xs text-gray-500">Maintenance</p>
@@ -57,6 +53,10 @@
         <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-gray-500">
             <p class="text-xs text-gray-500">Scrapped</p>
             <p class="text-lg font-bold text-gray-600">{{ $stats['scrapped'] }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-teal-500">
+            <p class="text-xs text-gray-500">Total Stock</p>
+            <p class="text-lg font-bold text-teal-600">{{ $stats['total_stock'] }}</p>
         </div>
     </div>
 
@@ -74,8 +74,7 @@
                     <option value="in_house" {{ request('status') == 'in_house' ? 'selected' : '' }}>In House</option>
                     <option value="partial_issued" {{ request('status') == 'partial_issued' ? 'selected' : '' }}>Partial</option>
                     <option value="all_issued" {{ request('status') == 'all_issued' ? 'selected' : '' }}>All Issued</option>
-                    <option value="issued" {{ request('status') == 'issued' ? 'selected' : '' }}>Issued</option>
-                    <option value="sold" {{ request('status') == 'sold' ? 'selected' : '' }}>Sold</option>
+                    <option value="out_of_stock" {{ request('status') == 'out_of_stock' ? 'selected' : '' }}>Out of Stock</option>
                     <option value="under_maintenance" {{ request('status') == 'under_maintenance' ? 'selected' : '' }}>Maintenance</option>
                     <option value="scrapped" {{ request('status') == 'scrapped' ? 'selected' : '' }}>Scrapped</option>
                 </select>
@@ -138,11 +137,10 @@
                                 @if($cylinder->status === 'in_house') bg-blue-100 text-blue-800
                                 @elseif($cylinder->status === 'partial_issued') bg-yellow-100 text-yellow-800
                                 @elseif($cylinder->status === 'all_issued') bg-orange-100 text-orange-800
-                                @elseif($cylinder->status === 'issued') bg-red-100 text-red-800
-                                @elseif($cylinder->status === 'sold') bg-green-100 text-green-800
+                                @elseif($cylinder->status === 'out_of_stock') bg-red-100 text-red-800
                                 @elseif($cylinder->status === 'under_maintenance') bg-purple-100 text-purple-800
                                 @elseif($cylinder->status === 'scrapped') bg-gray-100 text-gray-800
-                                @else bg-red-100 text-red-800
+                                @else bg-gray-100 text-gray-800
                                 @endif">
                                 {{ $cylinder->status_label }}
                             </span>
@@ -152,7 +150,7 @@
                                 <a href="{{ route('cylinders.show', $cylinder) }}" class="text-blue-600 hover:text-blue-800" title="View">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                @if(!in_array($cylinder->status, ['issued', 'sold', 'all_issued']))
+                                @if($cylinder->issued_quantity == 0)
                                     <a href="{{ route('cylinders.edit', $cylinder) }}" class="text-yellow-600 hover:text-yellow-800" title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </a>

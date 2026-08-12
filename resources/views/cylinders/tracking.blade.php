@@ -77,10 +77,10 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cylinder #</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gas</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Qty</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issued Date</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Days Out</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Deposit</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Sale</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
                 </thead>
@@ -99,6 +99,7 @@
                                 <span class="text-gray-400">N/A</span>
                             @endif
                         </td>
+                        <td class="px-6 py-3 text-center font-semibold">{{ $item->quantity }}</td>
                         <td class="px-6 py-3 text-sm">{{ $item->issued_date?->format('d-m-Y') ?? 'N/A' }}</td>
                         <td class="px-6 py-3 text-center">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
@@ -111,15 +112,6 @@
                             </span>
                         </td>
                         <td class="px-6 py-3 text-right text-sm">Rs. {{ number_format($item->security_deposit, 2) }}</td>
-                        <td class="px-6 py-3 text-center">
-                            @if($item->sale)
-                                <a href="{{ route('sales.show', $item->sale) }}" class="text-blue-600 hover:underline text-sm">
-                                    {{ $item->sale->invoice_no }}
-                                </a>
-                            @else
-                                <span class="text-gray-400 text-sm">—</span>
-                            @endif
-                        </td>
                         <td class="px-6 py-3 text-center">
                             <div class="flex items-center justify-center space-x-2">
                                 <a href="{{ route('cylinders.show', $item->cylinder) }}" 

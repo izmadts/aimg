@@ -12,7 +12,7 @@
             <p class="text-sm text-gray-500">Cylinder Details</p>
         </div>
         <div class="flex flex-wrap gap-2">
-            @if(!in_array($cylinder->status, ['issued', 'sold', 'all_issued']))
+            @if($cylinder->issued_quantity == 0)
                 <a href="{{ route('cylinders.edit', $cylinder) }}" class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium px-4 py-2 rounded-lg transition">
                     <i class="fas fa-edit mr-2"></i> Edit
                 </a>
@@ -29,19 +29,15 @@
             @if($cylinder->status === 'in_house') bg-blue-100 text-blue-800
             @elseif($cylinder->status === 'partial_issued') bg-yellow-100 text-yellow-800
             @elseif($cylinder->status === 'all_issued') bg-orange-100 text-orange-800
-            @elseif($cylinder->status === 'issued') bg-red-100 text-red-800
-            @elseif($cylinder->status === 'sold') bg-green-100 text-green-800
+            @elseif($cylinder->status === 'out_of_stock') bg-red-100 text-red-800
             @elseif($cylinder->status === 'under_maintenance') bg-purple-100 text-purple-800
             @else bg-gray-100 text-gray-800
             @endif">
             <i class="fas fa-circle text-xs mr-1.5"></i> {{ $cylinder->status_label }}
         </span>
-        @if($cylinder->currentCustomer)
+        @if($issuedDetails->count() > 0)
             <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
-                <i class="fas fa-user mr-1.5"></i> {{ $cylinder->currentCustomer->name }}
-                @if($cylinder->days_with_customer)
-                    <span class="ml-1 text-xs">({{ $cylinder->days_with_customer }} days)</span>
-                @endif
+                <i class="fas fa-user mr-1.5"></i> Issued to {{ $issuedDetails->count() }} customer(s)
             </span>
         @endif
         @if($cylinder->stock_quantity > 0)
@@ -80,8 +76,8 @@
                         <span class="font-semibold">{{ $cylinder->capacity }} {{ $cylinder->gasProduct->uom ?? '' }}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-500">Current Gas</span>
-                        <span class="font-semibold">{{ $cylinder->current_gas_quantity }} {{ $cylinder->gasProduct->uom ?? '' }}</span>
+                        <span class="text-gray-500">Tare Weight</span>
+                        <span class="font-semibold">{{ $cylinder->tare_weight ?? 'N/A' }} KG</span>
                     </div>
                 </div>
             </div>
@@ -209,7 +205,7 @@
                                         {{ $transaction->type_label }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-3 text-sm">{{ $transaction->customer->name ?? ($transaction->supplier->name ?? 'System') }}</td>
+                                <td class="px-6 py-3 text-sm">{{ $transaction->customer->name ?? 'System' }}</td>
                                 <td class="px-6 py-3 text-sm">{{ $transaction->reference_document ?? '—' }}</td>
                                 <td class="px-6 py-3 text-sm">{{ $transaction->remarks ?? '—' }}</td>
                             </tr>

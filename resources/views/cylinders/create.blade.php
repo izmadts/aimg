@@ -77,8 +77,8 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Tare Weight (KG)</label>
-                    <input type="number" step="0.01" name="tare_weight" value="{{ old('tare_weight') }}"
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tare Weight (KG) *</label>
+                    <input type="number" step="0.01" name="tare_weight" value="{{ old('tare_weight') }}" required
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('tare_weight')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
@@ -90,15 +90,6 @@
                     <input type="number" step="0.01" name="capacity" value="{{ old('capacity') }}" required
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('capacity')
-                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Current Gas Quantity</label>
-                    <input type="number" step="0.01" name="current_gas_quantity" value="{{ old('current_gas_quantity', 0) }}"
-                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                    @error('current_gas_quantity')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
@@ -185,27 +176,9 @@
                     @enderror
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Last Hydro Test Date</label>
-                    <input type="date" name="last_hydro_test_date" value="{{ old('last_hydro_test_date') }}"
-                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                    @error('last_hydro_test_date')
-                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Next Hydro Test Date</label>
-                    <input type="date" name="next_hydro_test_date" value="{{ old('next_hydro_test_date') }}"
-                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                    @error('next_hydro_test_date')
-                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                    <textarea name="notes" rows="2" 
+                    <textarea name="notes" rows="2"
                               class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">{{ old('notes') }}</textarea>
                     @error('notes')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
