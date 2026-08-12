@@ -51,11 +51,11 @@
                     @endif
 
                     <div class="mt-4 flex justify-center space-x-2">
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium 
-                            @if($user->role === 'admin') bg-purple-100 text-purple-800
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                            @if($user->isAdmin()) bg-purple-100 text-purple-800
                             @else bg-blue-100 text-blue-800
                             @endif">
-                            <i class="fas fa-shield-alt mr-1"></i> {{ ucfirst($user->role) }}
+                            <i class="fas fa-shield-alt mr-1"></i> {{ $user->role_name }}
                         </span>
                         
                         <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium

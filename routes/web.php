@@ -13,6 +13,8 @@ use App\Http\Controllers\IncomeExpenseController;
 use App\Http\Controllers\GasProductController;
 use App\Http\Controllers\HRMController;
 use App\Http\Controllers\AccountingController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -199,6 +201,20 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/accounting/trial-balance', [AccountingController::class, 'trialBalance'])->name('accounting.trial-balance');
     Route::get('/accounting/income-statement', [AccountingController::class, 'incomeStatement'])->name('accounting.income-statement');
     Route::get('/accounting/balance-sheet', [AccountingController::class, 'balanceSheet'])->name('accounting.balance-sheet');
+
+    // ============================================
+    // ROLES & PERMISSIONS (admin only)
+    // ============================================
+    Route::middleware('permission:roles.manage')->group(function () {
+        Route::resource('roles', RoleController::class)->except(['show']);
+    });
+
+    // ============================================
+    // USER MANAGEMENT (admin only)
+    // ============================================
+    Route::middleware('permission:users.manage')->group(function () {
+        Route::resource('users', UserController::class)->except(['show']);
+    });
 });
 
 

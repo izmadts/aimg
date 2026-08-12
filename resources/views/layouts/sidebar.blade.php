@@ -164,11 +164,29 @@
                 <span>Reports</span>
             </a>
             
+            @can('users.manage')
+            <!-- Users -->
+            <a href="{{ route('users.index') }}"
+               class="nav-link {{ Str::startsWith($currentRoute, 'users.') ? 'active' : '' }}">
+                <i class="fas fa-user-cog"></i>
+                <span>Users</span>
+            </a>
+            @endcan
+
+            @can('roles.manage')
+            <!-- Roles & Permissions -->
+            <a href="{{ route('roles.index') }}"
+               class="nav-link {{ Str::startsWith($currentRoute, 'roles.') ? 'active' : '' }}">
+                <i class="fas fa-user-shield"></i>
+                <span>Roles & Permissions</span>
+            </a>
+            @endcan
+
             <!-- Divider -->
             <div class="border-t border-gray-200 my-4"></div>
-            
+
             <!-- Settings -->
-            <a href="{{ route('profile.index') }}" 
+            <a href="{{ route('profile.index') }}"
                class="nav-link {{ Str::startsWith($currentRoute, 'profile.') ? 'active' : '' }}">
                 <i class="fas fa-cog"></i>
                 <span>Settings</span>
