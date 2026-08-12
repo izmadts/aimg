@@ -57,14 +57,22 @@
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                             onchange="autoDetectPrice()">
                         <option value="">Select Type</option>
-                        <option value="Extra Small" data-premium="1500" {{ old('type', $cylinder->type) == 'Extra Small' ? 'selected' : '' }}>Extra Small (1.7 m3)</option>
-                        <option value="Small" data-premium="2000" {{ old('type', $cylinder->type) == 'Small' ? 'selected' : '' }}>Small (3.4 m3)</option>
-                        <option value="Medium" data-premium="3000" {{ old('type', $cylinder->type) == 'Medium' ? 'selected' : '' }}>Medium (8.8 m3)</option>
-                        <option value="Large" data-premium="3500" {{ old('type', $cylinder->type) == 'Large' ? 'selected' : '' }}>Large (9.9 m3)</option>
+                        @foreach($cylinderTypes as $cylinderType)
+                            <option value="{{ $cylinderType->name }}" data-premium="{{ $cylinderType->price_premium }}"
+                                    data-capacity="{{ $cylinderType->capacity }}"
+                                    {{ old('type', $cylinder->type) == $cylinderType->name ? 'selected' : '' }}>
+                                {{ $cylinderType->name }}{{ $cylinderType->capacity ? ' (' . $cylinderType->capacity . ' m3)' : '' }}
+                            </option>
+                        @endforeach
                     </select>
                     @error('type')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                     @enderror
+                    @can('cylinder_types.manage')
+                    <p class="text-xs text-gray-400 mt-1">
+                        Don't see the type you need? <a href="{{ route('cylinder-types.index') }}" class="text-blue-600 hover:underline" target="_blank">Manage cylinder types</a>.
+                    </p>
+                    @endcan
                 </div>
 
                 <div>
@@ -87,7 +95,7 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Capacity *</label>
-                    <input type="number" step="0.01" name="capacity" value="{{ old('capacity', $cylinder->capacity) }}" required
+                    <input type="number" step="0.01" name="capacity" id="capacity" value="{{ old('capacity', $cylinder->capacity) }}" required
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('capacity')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
@@ -208,6 +216,12 @@
 
         const typeOption = typeSelect.options[typeSelect.selectedIndex];
         const premium = parseFloat(typeOption.dataset.premium) || 500;
+        const typeCapacity = parseFloat(typeOption.dataset.capacity) || 0;
+
+        const capacityInput = document.getElementById('capacity');
+        if (typeCapacity > 0 && capacityInput && !capacityInput.value) {
+            capacityInput.value = typeCapacity.toFixed(2);
+        }
 
         if (gasPurchasePrice > 0) {
             purchasePriceInput.value = gasPurchasePrice.toFixed(2);

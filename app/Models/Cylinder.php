@@ -444,13 +444,8 @@ class Cylinder extends Model
 
     private function getCylinderPremium()
     {
-        $premiums = [
-            'Extra Small' => 1500,
-            'Small' => 2000,
-            'Medium' => 3000,
-            'Large' => 3500,
-        ];
-        return $premiums[$this->type] ?? 1500;
+        $type = CylinderType::where('name', $this->type)->first();
+        return $type ? (float) $type->price_premium : 1500;
     }
 
     // ============================================

@@ -15,6 +15,8 @@ class DatabaseSeeder extends Seeder
             AccountSeeder::class,
             SupplierSeeder::class,
             CustomerSeeder::class,
+            UnitSeeder::class,
+            CylinderTypeSeeder::class,
             GasProductSeeder::class,
             CylinderSeeder::class,
         ]);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cylinder;
 use App\Models\CylinderIssuedDetail;
+use App\Models\CylinderType;
 use App\Models\GasProduct;
 use App\Models\Supplier;
 use App\Models\Customer;
@@ -76,8 +77,9 @@ class CylinderController extends Controller
     {
         $gasProducts = GasProduct::where('is_active', true)->get();
         $suppliers = Supplier::where('is_active', true)->get();
+        $cylinderTypes = CylinderType::active()->orderBy('name')->get();
 
-        return view('cylinders.create', compact('gasProducts', 'suppliers'));
+        return view('cylinders.create', compact('gasProducts', 'suppliers', 'cylinderTypes'));
     }
 
     // ============================================
@@ -150,8 +152,14 @@ class CylinderController extends Controller
 
         $gasProducts = GasProduct::where('is_active', true)->get();
         $suppliers = Supplier::where('is_active', true)->get();
+        $cylinderTypes = CylinderType::active()->orderBy('name')->get();
 
-        return view('cylinders.edit', compact('cylinder', 'gasProducts', 'suppliers'));
+        // Keep the cylinder's current type selectable even if it was since deactivated/renamed away.
+        if ($cylinder->type && ! $cylinderTypes->contains('name', $cylinder->type)) {
+            $cylinderTypes->push(new CylinderType(['name' => $cylinder->type, 'price_premium' => 1500]));
+        }
+
+        return view('cylinders.edit', compact('cylinder', 'gasProducts', 'suppliers', 'cylinderTypes'));
     }
 
     // ============================================

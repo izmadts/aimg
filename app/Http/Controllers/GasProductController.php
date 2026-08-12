@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\GasProduct;
 use App\Models\Cylinder;
+use App\Models\Unit;
 use App\Http\Requests\StoreGasProductRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -60,7 +61,9 @@ class GasProductController extends Controller
      */
     public function create()
     {
-        return view('gas-products.create');
+        $units = Unit::active()->orderBy('name')->get();
+
+        return view('gas-products.create', compact('units'));
     }
 
     /**
@@ -105,7 +108,14 @@ class GasProductController extends Controller
      */
     public function edit(GasProduct $gasProduct)
     {
-        return view('gas-products.edit', compact('gasProduct'));
+        $units = Unit::active()->orderBy('name')->get();
+
+        // Keep the product's current unit selectable even if it was since deactivated/renamed away.
+        if ($gasProduct->uom && ! $units->contains('name', $gasProduct->uom)) {
+            $units->push(new Unit(['name' => $gasProduct->uom]));
+        }
+
+        return view('gas-products.edit', compact('gasProduct', 'units'));
     }
 
     /**

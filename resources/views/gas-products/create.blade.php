@@ -44,11 +44,15 @@
                     <select name="uom" required
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         <option value="">Select UOM</option>
-                        <option value="KG" {{ old('uom') == 'KG' ? 'selected' : '' }}>KG</option>
-                        <option value="Cubic Meter" {{ old('uom') == 'Cubic Meter' ? 'selected' : '' }}>Cubic Meter</option>
-                        <option value="Liters" {{ old('uom') == 'Liters' ? 'selected' : '' }}>Liters</option>
-                        <option value="Cubic Feet" {{ old('uom') == 'Cubic Feet' ? 'selected' : '' }}>Cubic Feet</option>
+                        @foreach($units as $unit)
+                            <option value="{{ $unit->name }}" {{ old('uom') == $unit->name ? 'selected' : '' }}>{{ $unit->name }}</option>
+                        @endforeach
                     </select>
+                    @can('units.manage')
+                    <p class="text-xs text-gray-400 mt-1">
+                        Don't see the unit you need? <a href="{{ route('units.index') }}" class="text-blue-600 hover:underline" target="_blank">Manage units</a>.
+                    </p>
+                    @endcan
                     @error('uom')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                     @enderror

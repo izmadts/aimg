@@ -44,6 +44,8 @@ class PermissionSeeder extends Seeder
             ['slug' => 'users.manage', 'name' => 'Manage Users', 'module' => 'users', 'description' => 'Create/edit users and assign roles'],
             ['slug' => 'roles.manage', 'name' => 'Manage Roles & Permissions', 'module' => 'roles', 'description' => 'Create/edit roles and set their permissions'],
             ['slug' => 'settings.manage', 'name' => 'Manage System Settings', 'module' => 'settings', 'description' => 'Change system-wide settings such as public registration'],
+            ['slug' => 'units.manage', 'name' => 'Manage Units', 'module' => 'units', 'description' => 'Add/edit/delete units of measure used by gas products'],
+            ['slug' => 'cylinder_types.manage', 'name' => 'Manage Cylinder Types', 'module' => 'cylinder_types', 'description' => 'Add/edit/delete cylinder sizes/types'],
         ];
 
         foreach ($extra as $permission) {

@@ -189,6 +189,26 @@
             </a>
             @endcan
 
+            @can('units.manage')
+            <!-- Units -->
+            <a href="{{ route('units.index') }}"
+               class="nav-link {{ Str::startsWith($currentRoute, 'units.') ? 'active' : '' }}">
+                <i class="fas fa-ruler"></i>
+                <span>Units</span>
+                <span class="badge">{{ \App\Models\Unit::count() }}</span>
+            </a>
+            @endcan
+
+            @can('cylinder_types.manage')
+            <!-- Cylinder Types -->
+            <a href="{{ route('cylinder-types.index') }}"
+               class="nav-link {{ Str::startsWith($currentRoute, 'cylinder-types.') ? 'active' : '' }}">
+                <i class="fas fa-shapes"></i>
+                <span>Cylinder Types</span>
+                <span class="badge">{{ \App\Models\CylinderType::count() }}</span>
+            </a>
+            @endcan
+
             @can('settings.manage')
             <!-- System Settings -->
             <a href="{{ route('settings.index') }}"

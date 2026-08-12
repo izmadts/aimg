@@ -16,6 +16,8 @@ use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\UnitController;
+use App\Http\Controllers\CylinderTypeController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -237,6 +239,26 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('permission:settings.manage')->group(function () {
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
         Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
+    });
+
+    // ============================================
+    // UNITS OF MEASURE (master data used by Gas Products)
+    // ============================================
+    Route::middleware('permission:units.manage')->group(function () {
+        Route::get('/units', [UnitController::class, 'index'])->name('units.index');
+        Route::post('/units', [UnitController::class, 'store'])->name('units.store');
+        Route::put('/units/{unit}', [UnitController::class, 'update'])->name('units.update');
+        Route::delete('/units/{unit}', [UnitController::class, 'destroy'])->name('units.destroy');
+    });
+
+    // ============================================
+    // CYLINDER TYPES (master data used by Cylinders)
+    // ============================================
+    Route::middleware('permission:cylinder_types.manage')->group(function () {
+        Route::get('/cylinder-types', [CylinderTypeController::class, 'index'])->name('cylinder-types.index');
+        Route::post('/cylinder-types', [CylinderTypeController::class, 'store'])->name('cylinder-types.store');
+        Route::put('/cylinder-types/{cylinderType}', [CylinderTypeController::class, 'update'])->name('cylinder-types.update');
+        Route::delete('/cylinder-types/{cylinderType}', [CylinderTypeController::class, 'destroy'])->name('cylinder-types.destroy');
     });
 });
 
