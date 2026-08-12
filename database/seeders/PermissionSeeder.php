@@ -43,6 +43,7 @@ class PermissionSeeder extends Seeder
             ['slug' => 'hrm.manage', 'name' => 'Manage HRM', 'module' => 'hrm', 'description' => 'Manage employees, salaries, attendance, advances, leaves'],
             ['slug' => 'users.manage', 'name' => 'Manage Users', 'module' => 'users', 'description' => 'Create/edit users and assign roles'],
             ['slug' => 'roles.manage', 'name' => 'Manage Roles & Permissions', 'module' => 'roles', 'description' => 'Create/edit roles and set their permissions'],
+            ['slug' => 'settings.manage', 'name' => 'Manage System Settings', 'module' => 'settings', 'description' => 'Change system-wide settings such as public registration'],
         ];
 
         foreach ($extra as $permission) {
