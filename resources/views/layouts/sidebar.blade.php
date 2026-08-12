@@ -85,15 +85,6 @@
                 </span>
             </a>
 
-            <!-- Cylinder Stock -->
-            <a href="{{ route('cylinders.stock') }}"
-               class="nav-link {{ Str::startsWith($currentRoute, 'cylinders.stock') ? 'active' : '' }}">
-                <i class="fas fa-warehouse"></i>
-                <span>Cylinder Stock</span>
-                <span class="badge" style="background: #dbeafe; color: #1e40af;">
-                    {{ \App\Models\Cylinder::whereIn('status', ['in_house', 'partial_issued'])->count() }}
-                </span>
-            </a>
             @endcan
 
             <!-- Divider -->

@@ -55,9 +55,8 @@ Route::middleware(['auth'])->group(function () {
     // CYLINDERS
     // ============================================
     // Static routes must be registered before the resource's {cylinder} wildcard,
-    // otherwise e.g. GET /cylinders/stock matches cylinders.show with cylinder="stock" and 404s.
+    // otherwise e.g. GET /cylinders/available matches cylinders.show with cylinder="available" and 404s.
     Route::middleware('permission:cylinders.view')->group(function () {
-        Route::get('/cylinders/stock', [CylinderController::class, 'stock'])->name('cylinders.stock');
         Route::get('/cylinders/available', [CylinderController::class, 'available'])->name('cylinders.available');
         Route::get('/cylinders/export', [CylinderController::class, 'export'])->name('cylinders.export');
         Route::get('/cylinders/customer-outstanding/{customer}', [CylinderController::class, 'customerOutstanding'])->name('cylinders.customer-outstanding');

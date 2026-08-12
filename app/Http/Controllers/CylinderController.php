@@ -64,8 +64,9 @@ class CylinderController extends Controller
         ];
 
         $gasProducts = GasProduct::where('is_active', true)->get();
+        $customers = Customer::where('is_active', true)->get();
 
-        return view('cylinders.index', compact('cylinders', 'stats', 'gasProducts'));
+        return view('cylinders.index', compact('cylinders', 'stats', 'gasProducts', 'customers'));
     }
 
     // ============================================
@@ -188,47 +189,6 @@ class CylinderController extends Controller
 
         return redirect()->route('cylinders.index')
             ->with('success', 'Cylinder deleted successfully!');
-    }
-
-    // ============================================
-    // STOCK - Stock Management
-    // ============================================
-    public function stock(Request $request)
-    {
-        $query = Cylinder::with(['gasProduct']);
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('cylinder_number', 'LIKE', "%{$search}%")
-                  ->orWhere('type', 'LIKE', "%{$search}%")
-                  ->orWhereHas('gasProduct', function ($sq) use ($search) {
-                      $sq->where('name', 'LIKE', "%{$search}%");
-                  });
-            });
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        $cylinders = $query->paginate(20);
-
-        $stockSummary = [
-            'total_types' => Cylinder::count(),
-            'total_stock' => Cylinder::sum('stock_quantity'),
-            'total_issued' => Cylinder::sum('issued_quantity'),
-            'available' => Cylinder::sum(DB::raw('stock_quantity - issued_quantity')),
-            'total_value' => Cylinder::sum(DB::raw('purchase_price * stock_quantity')),
-            'in_house' => Cylinder::where('status', 'in_house')->count(),
-            'partial_issued' => Cylinder::where('status', 'partial_issued')->count(),
-            'all_issued' => Cylinder::where('status', 'all_issued')->count(),
-        ];
-
-        $gasProducts = GasProduct::where('is_active', true)->get();
-        $customers = Customer::where('is_active', true)->get();
-
-        return view('cylinders.stock', compact('cylinders', 'stockSummary', 'gasProducts', 'customers'));
     }
 
     // ============================================
