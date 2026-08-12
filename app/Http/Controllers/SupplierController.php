@@ -277,6 +277,10 @@ class SupplierController extends Controller
      */
     public function getStatement(Request $request)
     {
+        $request->validate([
+            'supplier_id' => 'required|integer',
+        ]);
+
         $supplierId = $request->supplier_id;
         $supplier = Supplier::find($supplierId);
 

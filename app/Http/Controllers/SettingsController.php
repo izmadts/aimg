@@ -18,6 +18,10 @@ class SettingsController extends Controller
 
     public function update(Request $request)
     {
+        $request->validate([
+            'allow_registration' => 'nullable|boolean',
+        ]);
+
         Setting::set('allow_registration', $request->boolean('allow_registration') ? '1' : '0');
 
         return redirect()->route('settings.index')->with('success', 'Settings updated successfully!');

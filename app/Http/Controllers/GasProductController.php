@@ -207,7 +207,7 @@ class GasProductController extends Controller
     public function updateStock(Request $request, GasProduct $gasProduct)
     {
         $request->validate([
-            'quantity' => 'required|numeric',
+            'quantity' => 'required|numeric|min:0.01',
             'type' => 'required|in:add,subtract'
         ]);
 

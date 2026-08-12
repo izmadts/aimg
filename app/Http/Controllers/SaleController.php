@@ -275,6 +275,14 @@ class SaleController extends Controller
     // ============================================
     public function recordPayment(Request $request, Sale $sale)
     {
+        if ($sale->status === 'cancelled') {
+            return response()->json(['success' => false, 'message' => 'Cannot record a payment against a cancelled sale.'], 400);
+        }
+
+        if ($sale->balance_due <= 0) {
+            return response()->json(['success' => false, 'message' => 'This sale has no outstanding balance.'], 400);
+        }
+
         $request->validate([
             'amount' => 'required|numeric|min:0.01|max:' . $sale->balance_due,
             'payment_method' => 'required|in:cash,bank_transfer,cheque,online',
@@ -314,6 +322,10 @@ class SaleController extends Controller
     // ============================================
     public function returnCylinder(Request $request, Sale $sale)
     {
+        if ($sale->status === 'cancelled') {
+            return response()->json(['success' => false, 'message' => 'Cannot process a cylinder return against a cancelled sale.'], 400);
+        }
+
         $request->validate([
             'cylinder_id' => 'required|exists:cylinders,id',
             'customer_id' => 'required|exists:customers,id',

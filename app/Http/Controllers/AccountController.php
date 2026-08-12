@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class AccountController extends Controller
 {
@@ -139,11 +140,21 @@ class AccountController extends Controller
         $validated = $request->validate([
             'account_name' => 'required|string|max:255',
             'account_type' => 'required|in:asset,liability,income,expense,equity',
-            'parent_id' => 'nullable|exists:accounts,id',
+            'parent_id' => [
+                'nullable',
+                'exists:accounts,id',
+                Rule::notIn([$account->id]),
+            ],
             'opening_balance' => 'nullable|numeric|min:0',
             'is_active' => 'boolean',
             'description' => 'nullable|string|max:500'
+        ], [
+            'parent_id.not_in' => 'An account cannot be its own parent.',
         ]);
+
+        if (! empty($validated['parent_id']) && $this->isDescendant($account, (int) $validated['parent_id'])) {
+            return back()->withErrors(['parent_id' => 'An account cannot be moved under one of its own sub-accounts.'])->withInput();
+        }
 
         $validated['is_active'] = $request->has('is_active');
         $validated['opening_balance'] = $validated['opening_balance'] ?? 0;
@@ -173,5 +184,23 @@ class AccountController extends Controller
 
         return redirect()->route('accounts.index')
             ->with('success', "Account '{$account->account_name}' deleted successfully!");
+    }
+
+    /**
+     * Whether $candidateParentId is $account itself or one of its own descendants
+     * (walking down the parent_id chain) - either would create a cycle.
+     */
+    private function isDescendant(Account $account, int $candidateParentId): bool
+    {
+        $descendantIds = [];
+        $frontier = [$account->id];
+
+        while (! empty($frontier)) {
+            $childIds = Account::whereIn('parent_id', $frontier)->pluck('id')->all();
+            $descendantIds = array_merge($descendantIds, $childIds);
+            $frontier = $childIds;
+        }
+
+        return in_array($candidateParentId, $descendantIds, true);
     }
 }

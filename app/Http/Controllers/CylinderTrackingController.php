@@ -115,6 +115,11 @@ class CylinderTrackingController extends Controller
      */
     public function getCustomerReport(Request $request)
     {
+        $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'status' => 'nullable|in:issued,returned,all',
+        ]);
+
         $customerId = $request->customer_id;
         $status = $request->status ?? 'issued';
 
@@ -151,6 +156,10 @@ class CylinderTrackingController extends Controller
      */
     public function getHistory(Request $request)
     {
+        $request->validate([
+            'cylinder_id' => 'required|integer',
+        ]);
+
         $cylinderId = $request->cylinder_id;
 
         $cylinder = Cylinder::find($cylinderId);
@@ -333,6 +342,10 @@ class CylinderTrackingController extends Controller
      */
     public function exportHistory(Request $request)
     {
+        $request->validate([
+            'cylinder_id' => 'required|integer',
+        ]);
+
         $cylinderId = $request->cylinder_id;
         $cylinder = Cylinder::find($cylinderId);
 

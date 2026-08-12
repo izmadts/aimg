@@ -287,6 +287,11 @@ class PurchaseController extends Controller
     // ============================================
     public function approve(Purchase $purchase)
     {
+        if ($purchase->status !== 'draft') {
+            return redirect()->route('purchases.show', $purchase)
+                ->with('error', "Purchase {$purchase->purchase_invoice_no} is already {$purchase->status} and cannot be approved again.");
+        }
+
         $purchase->approve();
 
         return redirect()->route('purchases.show', $purchase)
@@ -303,6 +308,14 @@ class PurchaseController extends Controller
     // ============================================
     public function recordPayment(Request $request, Purchase $purchase)
     {
+        if ($purchase->status === 'cancelled') {
+            return response()->json(['success' => false, 'message' => 'Cannot record a payment against a cancelled purchase.'], 400);
+        }
+
+        if ($purchase->balance_due <= 0) {
+            return response()->json(['success' => false, 'message' => 'This purchase has no outstanding balance.'], 400);
+        }
+
         $request->validate([
             'amount' => 'required|numeric|min:0.01|max:' . $purchase->balance_due,
             'payment_method' => 'required|in:cash,bank_transfer,cheque,online',
