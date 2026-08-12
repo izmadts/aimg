@@ -168,16 +168,34 @@ class HRMController extends Controller
     public function deleteEmployee($id)
     {
         $employee = Employee::findOrFail($id);
-        
-        if ($employee->salaries()->exists()) {
+
+        $hasRecords = $employee->salaries()->exists()
+            || $employee->advances()->exists()
+            || $employee->attendances()->exists()
+            || $employee->leaves()->exists();
+
+        if ($hasRecords && !auth()->user()->isAdmin()) {
             return redirect()->back()
-                ->with('error', "Cannot delete '{$employee->full_name}' because they have salary records.");
+                ->with('error', "Cannot delete '{$employee->full_name}' because they have salary, advance, attendance, or leave records. Only an administrator can delete an employee along with their history.");
         }
 
-        $employee->delete();
+        DB::transaction(function () use ($employee) {
+            // Reverse any posted accounting entries before the cascade below removes
+            // the salary/advance rows those entries point to via reference_id.
+            foreach ($employee->salaries as $salary) {
+                $this->accountingService->reverseEntries($salary, 'salary', "Employee deleted: {$employee->full_name}");
+            }
+            foreach ($employee->advances as $advance) {
+                $this->accountingService->reverseEntries($advance, 'advance', "Employee deleted: {$employee->full_name}");
+            }
+
+            // Salaries/advances/attendances/leaves cascade-delete via their
+            // employee_id foreign key (onDelete('cascade')).
+            $employee->delete();
+        });
 
         return redirect()->route('hrm.employees')
-            ->with('success', 'Employee deleted successfully!');
+            ->with('success', 'Employee deleted successfully' . ($hasRecords ? ', along with their related records. Accounting entries were reversed.' : '.'));
     }
 
     // ============================================
@@ -284,6 +302,17 @@ class HRMController extends Controller
 
     public function paySalary(EmployeeSalary $salary, Request $request)
     {
+        $request->validate([
+            'payment_method' => 'nullable|in:cash,bank_transfer,cheque,online',
+        ]);
+
+        if ($salary->status === 'paid') {
+            $message = 'This salary was already paid.';
+            return $request->ajax()
+                ? response()->json(['success' => false, 'message' => $message], 400)
+                : redirect()->route('hrm.salaries')->with('error', $message);
+        }
+
         DB::transaction(function () use ($salary, $request) {
             $salary->update([
                 'status' => 'paid',
@@ -305,6 +334,23 @@ class HRMController extends Controller
 
         return redirect()->route('hrm.salaries')
             ->with('success', 'Salary paid successfully!');
+    }
+
+    public function deleteSalary($id)
+    {
+        $salary = EmployeeSalary::with('employee')->findOrFail($id);
+
+        DB::transaction(function () use ($salary) {
+            $this->accountingService->reverseEntries(
+                $salary,
+                'salary',
+                "Deleted salary record: {$salary->employee->full_name} - {$salary->month_name} {$salary->year}"
+            );
+            $salary->delete();
+        });
+
+        return redirect()->route('hrm.salaries')
+            ->with('success', 'Salary record deleted. Any related accounting entries were reversed.');
     }
 
     // ============================================
@@ -354,8 +400,8 @@ class HRMController extends Controller
             'date' => 'required|date',
             'status' => 'required|in:present,absent,late,leave,holiday',
             'check_in_time' => 'nullable|date_format:H:i',
-            'check_out_time' => 'nullable|date_format:H:i',
-            'notes' => 'nullable|string'
+            'check_out_time' => 'nullable|date_format:H:i|after:check_in_time',
+            'notes' => 'nullable|string|max:1000'
         ]);
 
         $existing = EmployeeAttendance::where('employee_id', $request->employee_id)
@@ -440,12 +486,12 @@ class HRMController extends Controller
     {
         $validated = $request->validate([
             'employee_id' => 'required|exists:employees,id',
-            'amount' => 'required|numeric|min:0',
+            'amount' => 'required|numeric|min:0.01',
             'advance_date' => 'required|date',
-            'deduction_start_month' => 'required|date',
+            'deduction_start_month' => 'required|date|after_or_equal:advance_date',
             'deduction_installments' => 'required|integer|min:1|max:12',
-            'purpose' => 'required|string',
-            'notes' => 'nullable|string'
+            'purpose' => 'required|string|max:255',
+            'notes' => 'nullable|string|max:1000'
         ]);
 
         $validated['deduction_amount_per_month'] = $validated['amount'] / $validated['deduction_installments'];
@@ -460,6 +506,13 @@ class HRMController extends Controller
 
     public function approveAdvance(EmployeeAdvance $advance, Request $request)
     {
+        if ($advance->status !== 'pending') {
+            $message = 'Only a pending advance can be approved.';
+            return $request->ajax()
+                ? response()->json(['success' => false, 'message' => $message], 400)
+                : redirect()->route('hrm.advances')->with('error', $message);
+        }
+
         DB::transaction(function () use ($advance) {
             $advance->update([
                 'status' => 'approved',
@@ -484,6 +537,14 @@ class HRMController extends Controller
 
     public function rejectAdvance(EmployeeAdvance $advance, Request $request)
     {
+        $request->validate([
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        if ($advance->status !== 'pending') {
+            return redirect()->route('hrm.advances')->with('error', 'Only a pending advance can be rejected.');
+        }
+
         $advance->update([
             'status' => 'rejected',
             'notes' => $request->notes ?? 'Rejected'
@@ -491,6 +552,24 @@ class HRMController extends Controller
 
         return redirect()->route('hrm.advances')
             ->with('success', 'Advance rejected successfully!');
+    }
+
+    public function deleteAdvance($id)
+    {
+        $advance = EmployeeAdvance::with('employee')->findOrFail($id);
+
+        DB::transaction(function () use ($advance) {
+            // No-ops safely if the advance was never approved (nothing was posted).
+            $this->accountingService->reverseEntries(
+                $advance,
+                'advance',
+                "Deleted advance record: {$advance->employee->full_name}"
+            );
+            $advance->delete();
+        });
+
+        return redirect()->route('hrm.advances')
+            ->with('success', 'Advance record deleted. Any related accounting entries were reversed.');
     }
 
     // ============================================
@@ -536,8 +615,8 @@ class HRMController extends Controller
             'leave_type' => 'required|in:annual,sick,casual,other',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
-            'reason' => 'required|string',
-            'notes' => 'nullable|string'
+            'reason' => 'required|string|max:255',
+            'notes' => 'nullable|string|max:1000'
         ]);
 
         $start = \Carbon\Carbon::parse($request->start_date);
@@ -562,6 +641,13 @@ class HRMController extends Controller
 
     public function approveLeave(EmployeeLeave $leave, Request $request)
     {
+        if ($leave->status !== 'pending') {
+            $message = 'Only a pending leave request can be approved.';
+            return $request->ajax()
+                ? response()->json(['success' => false, 'message' => $message], 400)
+                : redirect()->route('hrm.leaves')->with('error', $message);
+        }
+
         $leave->update([
             'status' => 'approved',
             'approved_by' => auth()->id(),
@@ -581,6 +667,14 @@ class HRMController extends Controller
 
     public function rejectLeave(EmployeeLeave $leave, Request $request)
     {
+        $request->validate([
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        if ($leave->status !== 'pending') {
+            return redirect()->route('hrm.leaves')->with('error', 'Only a pending leave request can be rejected.');
+        }
+
         $leave->update([
             'status' => 'rejected',
             'notes' => $request->notes ?? 'Rejected'
@@ -588,6 +682,15 @@ class HRMController extends Controller
 
         return redirect()->route('hrm.leaves')
             ->with('success', 'Leave rejected!');
+    }
+
+    public function deleteLeave($id)
+    {
+        $leave = EmployeeLeave::findOrFail($id);
+        $leave->delete();
+
+        return redirect()->route('hrm.leaves')
+            ->with('success', 'Leave record deleted.');
     }
 
     // ============================================

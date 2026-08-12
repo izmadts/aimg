@@ -177,6 +177,9 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
+                        @can('income_expense.delete')
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        @endcan
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
@@ -197,10 +200,22 @@
                             Rs. {{ number_format($transaction->debit ?: $transaction->credit, 2) }}
                         </td>
                         <td class="px-6 py-3 text-xs font-mono">{{ $transaction->entry_no ?? '—' }}</td>
+                        @can('income_expense.delete')
+                        <td class="px-6 py-3 text-center">
+                            <form action="{{ route('income-expense.destroy', $transaction) }}" method="POST" class="inline">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" onclick="return confirm('Delete this entry? This removes it from your accounts.')"
+                                        class="text-gray-400 hover:text-red-600 transition" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                        @endcan
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">No transactions found.</td>
+                        <td colspan="7" class="px-6 py-8 text-center text-gray-500">No transactions found.</td>
                     </tr>
                     @endforelse
                 </tbody>

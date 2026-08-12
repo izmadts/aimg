@@ -77,16 +77,26 @@
                             </span>
                         </td>
                         <td class="px-6 py-3 text-center">
-                            @if($leave->status === 'pending')
-                                <button onclick="approveLeave({{ $leave->id }})" 
-                                        class="text-green-600 hover:text-green-800 transition" title="Approve">
-                                    <i class="fas fa-check-circle"></i>
-                                </button>
-                                <button onclick="rejectLeave({{ $leave->id }})" 
-                                        class="text-red-600 hover:text-red-800 transition" title="Reject">
-                                    <i class="fas fa-times-circle"></i>
-                                </button>
-                            @endif
+                            <div class="flex items-center justify-center space-x-2">
+                                @if($leave->status === 'pending')
+                                    <button onclick="approveLeave({{ $leave->id }})"
+                                            class="text-green-600 hover:text-green-800 transition" title="Approve">
+                                        <i class="fas fa-check-circle"></i>
+                                    </button>
+                                    <button onclick="rejectLeave({{ $leave->id }})"
+                                            class="text-red-600 hover:text-red-800 transition" title="Reject">
+                                        <i class="fas fa-times-circle"></i>
+                                    </button>
+                                @endif
+                                <form action="{{ route('hrm.leaves.delete', $leave) }}" method="POST" class="inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" onclick="return confirm('Delete this leave record?')"
+                                            class="text-gray-400 hover:text-red-600 transition" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     @empty

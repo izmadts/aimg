@@ -157,6 +157,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/income-expense/store-income', [IncomeExpenseController::class, 'storeIncome'])->name('income-expense.store-income');
         Route::post('/income-expense/store-expense', [IncomeExpenseController::class, 'storeExpense'])->name('income-expense.store-expense');
     });
+    Route::delete('/income-expense/{entry}', [IncomeExpenseController::class, 'destroy'])
+        ->name('income-expense.destroy')
+        ->middleware('permission:income_expense.delete');
 
     // ============================================
     // GAS PRODUCTS
@@ -195,6 +198,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/hrm/salaries/create', [HRMController::class, 'createSalary'])->name('hrm.salaries.create');
         Route::post('/hrm/salaries/process', [HRMController::class, 'processSalary'])->name('hrm.salaries.process');
         Route::post('/hrm/salaries/{salary}/pay', [HRMController::class, 'paySalary'])->name('hrm.salaries.pay');
+        Route::delete('/hrm/salaries/{salary}', [HRMController::class, 'deleteSalary'])->name('hrm.salaries.delete');
 
         Route::post('/hrm/attendance', [HRMController::class, 'markAttendance'])->name('hrm.attendance.store');
         Route::delete('/hrm/attendance/{id}', [HRMController::class, 'deleteAttendance'])->name('hrm.attendance.delete');
@@ -203,11 +207,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/hrm/advances', [HRMController::class, 'storeAdvance'])->name('hrm.advances.store');
         Route::post('/hrm/advances/{advance}/approve', [HRMController::class, 'approveAdvance'])->name('hrm.advances.approve');
         Route::post('/hrm/advances/{advance}/reject', [HRMController::class, 'rejectAdvance'])->name('hrm.advances.reject');
+        Route::delete('/hrm/advances/{advance}', [HRMController::class, 'deleteAdvance'])->name('hrm.advances.delete');
 
         Route::get('/hrm/leaves/create', [HRMController::class, 'createLeave'])->name('hrm.leaves.create');
         Route::post('/hrm/leaves', [HRMController::class, 'storeLeave'])->name('hrm.leaves.store');
         Route::post('/hrm/leaves/{leave}/approve', [HRMController::class, 'approveLeave'])->name('hrm.leaves.approve');
         Route::post('/hrm/leaves/{leave}/reject', [HRMController::class, 'rejectLeave'])->name('hrm.leaves.reject');
+        Route::delete('/hrm/leaves/{leave}', [HRMController::class, 'deleteLeave'])->name('hrm.leaves.delete');
     });
 
     // ============================================

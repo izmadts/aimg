@@ -67,16 +67,27 @@
                             </span>
                         </td>
                         <td class="px-6 py-3 text-center">
-                            @if($advance->status === 'pending')
-                                <button onclick="approveAdvance({{ $advance->id }})" 
-                                        class="text-green-600 hover:text-green-800 transition" title="Approve">
-                                    <i class="fas fa-check-circle"></i>
-                                </button>
-                                <button onclick="rejectAdvance({{ $advance->id }})" 
-                                        class="text-red-600 hover:text-red-800 transition" title="Reject">
-                                    <i class="fas fa-times-circle"></i>
-                                </button>
-                            @endif
+                            <div class="flex items-center justify-center space-x-2">
+                                @if($advance->status === 'pending')
+                                    <button onclick="approveAdvance({{ $advance->id }})"
+                                            class="text-green-600 hover:text-green-800 transition" title="Approve">
+                                        <i class="fas fa-check-circle"></i>
+                                    </button>
+                                    <button onclick="rejectAdvance({{ $advance->id }})"
+                                            class="text-red-600 hover:text-red-800 transition" title="Reject">
+                                        <i class="fas fa-times-circle"></i>
+                                    </button>
+                                @endif
+                                <form action="{{ route('hrm.advances.delete', $advance) }}" method="POST" class="inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit"
+                                            onclick="return confirm('{{ $advance->status === 'approved' ? 'This advance was approved and posted to accounting. Deleting it will reverse the related accounting entries. Continue?' : 'Delete this advance request?' }}')"
+                                            class="text-gray-400 hover:text-red-600 transition" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     @empty

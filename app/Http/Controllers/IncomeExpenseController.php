@@ -108,12 +108,13 @@ class IncomeExpenseController extends Controller
     {
         $validated = $request->validated();
         $account = Account::findOrFail($validated['account_id']);
+        $description = $validated['description'] . (! empty($validated['reference_no']) ? " (Ref: {$validated['reference_no']})" : '');
 
-        DB::transaction(function () use ($validated, $account) {
+        DB::transaction(function () use ($validated, $account, $description) {
             $this->accountingService->recordIncome(
                 $account->account_code,
                 (float) $validated['amount'],
-                $validated['description'],
+                $description,
                 null,
                 $validated['payment_method'],
                 $validated['date']
@@ -131,12 +132,13 @@ class IncomeExpenseController extends Controller
     {
         $validated = $request->validated();
         $account = Account::findOrFail($validated['account_id']);
+        $description = $validated['description'] . (! empty($validated['reference_no']) ? " (Ref: {$validated['reference_no']})" : '');
 
-        DB::transaction(function () use ($validated, $account) {
+        DB::transaction(function () use ($validated, $account, $description) {
             $this->accountingService->recordExpense(
                 $account->account_code,
                 (float) $validated['amount'],
-                $validated['description'],
+                $description,
                 null,
                 $validated['payment_method'],
                 $validated['date']
@@ -145,6 +147,30 @@ class IncomeExpenseController extends Controller
 
         return redirect()->route('income-expense.index')
             ->with('success', 'Expense recorded successfully!');
+    }
+
+    /**
+     * Delete an income/expense entry (removes both legs of the balanced
+     * posting sharing the same entry_no, then recalculates the accounts hit).
+     */
+    public function destroy(AccountingEntry $entry)
+    {
+        if (! in_array($entry->transaction_type, ['income', 'expense'])) {
+            return redirect()->route('income-expense.index')
+                ->with('error', 'Only income/expense entries can be deleted from this screen.');
+        }
+
+        DB::transaction(function () use ($entry) {
+            $group = AccountingEntry::where('entry_no', $entry->entry_no)->get();
+            $accountIds = $group->pluck('account_id')->unique();
+
+            AccountingEntry::where('entry_no', $entry->entry_no)->delete();
+
+            Account::whereIn('id', $accountIds)->get()->each->updateBalance();
+        });
+
+        return redirect()->route('income-expense.index')
+            ->with('success', 'Entry deleted and account balances updated.');
     }
 
     /**

@@ -122,15 +122,23 @@
                             </span>
                         </td>
                         <td class="px-6 py-3 text-center">
-                            @if($salary->status === 'pending')
-                                <button onclick="paySalary({{ $salary->id }})" 
-                                        class="text-green-600 hover:text-green-800 transition" title="Pay">
-                                    <i class="fas fa-check-circle"></i>
-                                </button>
-                            @endif
-                            <a href="#" class="text-blue-600 hover:text-blue-800 transition" title="View">
-                                <i class="fas fa-eye"></i>
-                            </a>
+                            <div class="flex items-center justify-center space-x-2">
+                                @if($salary->status === 'pending')
+                                    <button onclick="paySalary({{ $salary->id }})"
+                                            class="text-green-600 hover:text-green-800 transition" title="Pay">
+                                        <i class="fas fa-check-circle"></i>
+                                    </button>
+                                @endif
+                                <form action="{{ route('hrm.salaries.delete', $salary) }}" method="POST" class="inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit"
+                                            onclick="return confirm('{{ $salary->status === 'paid' ? 'This salary was already paid and posted to accounting. Deleting it will reverse the related accounting entries. Continue?' : 'Delete this salary record?' }}')"
+                                            class="text-gray-400 hover:text-red-600 transition" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     @empty
