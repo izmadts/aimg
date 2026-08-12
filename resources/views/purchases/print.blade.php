@@ -298,11 +298,29 @@
         HEADER
         ========================================== -->
         <div class="invoice-header">
+            @php
+                $companyName = \App\Models\Setting::get('company_name', config('app.name', 'ERP System'));
+                $companyAddress = \App\Models\Setting::get('company_address');
+                $companyPhone = \App\Models\Setting::get('company_phone');
+                $companyEmail = \App\Models\Setting::get('company_email');
+                $companyTaxNumber = \App\Models\Setting::get('company_tax_number');
+                $companyWebsite = \App\Models\Setting::get('company_website');
+                $companyLogoUrl = \App\Models\Setting::url('company_logo');
+            @endphp
             <div class="company-info">
-                <h1>🏥 Medical Gas ERP</h1>
-                <p>123 Main Street, Lahore, Pakistan</p>
-                <p>Phone: +92 42 1234567 | Email: info@medicalgas.com</p>
-                <p>NTN: 1234567-8 | GST: 9876543-2</p>
+                @if($companyLogoUrl)
+                    <img src="{{ $companyLogoUrl }}" alt="{{ $companyName }}" style="max-height: 50px; margin-bottom: 6px;">
+                @endif
+                <h1>{{ $companyName }}</h1>
+                @if($companyAddress)
+                    <p>{{ $companyAddress }}</p>
+                @endif
+                @if($companyPhone || $companyEmail)
+                    <p>{{ $companyPhone ? "Phone: {$companyPhone}" : '' }}{{ $companyPhone && $companyEmail ? ' | ' : '' }}{{ $companyEmail ? "Email: {$companyEmail}" : '' }}</p>
+                @endif
+                @if($companyTaxNumber)
+                    <p>{{ $companyTaxNumber }}</p>
+                @endif
             </div>
             <div class="invoice-title">
                 <h2>PURCHASE ORDER</h2>
@@ -469,17 +487,17 @@
         ========================================== -->
         <div class="invoice-footer">
             <div class="footer-left">
-                <p><strong>Medical Gas ERP</strong></p>
-                <p>Phone: +92 42 1234567</p>
-                <p>Email: info@medicalgas.com</p>
-                <p>Website: www.medicalgas.com</p>
+                <p><strong>{{ $companyName }}</strong></p>
+                @if($companyPhone)<p>Phone: {{ $companyPhone }}</p>@endif
+                @if($companyEmail)<p>Email: {{ $companyEmail }}</p>@endif
+                @if($companyWebsite)<p>Website: {{ $companyWebsite }}</p>@endif
                 <p style="margin-top: 5px; color: #9ca3af; font-size: 9px;">
                     Generated on: {{ now()->format('d-m-Y h:i A') }}
                 </p>
             </div>
             <div class="footer-right">
                 <div style="margin-bottom: 10px;">
-                    <p style="font-size: 11px; color: #4b5563;">For Medical Gas ERP</p>
+                    <p style="font-size: 11px; color: #4b5563;">For {{ $companyName }}</p>
                 </div>
                 <div class="signature-line">
                     <p style="text-align: center;">Authorized Signature</p>

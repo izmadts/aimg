@@ -298,11 +298,29 @@
         HEADER
         ========================================== -->
         <div class="invoice-header">
+            @php
+                $companyName = \App\Models\Setting::get('company_name', config('app.name', 'ERP System'));
+                $companyAddress = \App\Models\Setting::get('company_address');
+                $companyPhone = \App\Models\Setting::get('company_phone');
+                $companyEmail = \App\Models\Setting::get('company_email');
+                $companyTaxNumber = \App\Models\Setting::get('company_tax_number');
+                $companyWebsite = \App\Models\Setting::get('company_website');
+                $companyLogoUrl = \App\Models\Setting::url('company_logo');
+            @endphp
             <div class="company-info">
-                <h1>🏥 Medical Gas ERP</h1>
-                <p>123 Main Street, Lahore, Pakistan</p>
-                <p>Phone: +92 42 1234567 | Email: info@medicalgas.com</p>
-                <p>NTN: 1234567-8 | GST: 9876543-2</p>
+                @if($companyLogoUrl)
+                    <img src="{{ $companyLogoUrl }}" alt="{{ $companyName }}" style="max-height: 50px; margin-bottom: 6px;">
+                @endif
+                <h1>{{ $companyName }}</h1>
+                @if($companyAddress)
+                    <p>{{ $companyAddress }}</p>
+                @endif
+                @if($companyPhone || $companyEmail)
+                    <p>{{ $companyPhone ? "Phone: {$companyPhone}" : '' }}{{ $companyPhone && $companyEmail ? ' | ' : '' }}{{ $companyEmail ? "Email: {$companyEmail}" : '' }}</p>
+                @endif
+                @if($companyTaxNumber)
+                    <p>{{ $companyTaxNumber }}</p>
+                @endif
             </div>
             <div class="invoice-title">
                 <h2>SALE INVOICE</h2>
@@ -476,7 +494,7 @@
         <div style="margin-top: 20px; font-size: 10px; color: #6b7280; line-height: 1.6; border-top: 1px solid #e5e7eb; padding-top: 15px;">
             <p><strong>Terms & Conditions:</strong></p>
             <p>1. Payment is due within 15 days from the date of invoice.</p>
-            <p>2. Cylinders remain the property of Medical Gas ERP until full payment is received.</p>
+            <p>2. Cylinders remain the property of {{ $companyName }} until full payment is received.</p>
             <p>3. Any damage to cylinders will be charged to the customer.</p>
             <p>4. Please return empty cylinders within 7 days of delivery.</p>
         </div>
@@ -486,17 +504,17 @@
         ========================================== -->
         <div class="invoice-footer">
             <div class="footer-left">
-                <p><strong>Medical Gas ERP</strong></p>
-                <p>Phone: +92 42 1234567</p>
-                <p>Email: info@medicalgas.com</p>
-                <p>Website: www.medicalgas.com</p>
+                <p><strong>{{ $companyName }}</strong></p>
+                @if($companyPhone)<p>Phone: {{ $companyPhone }}</p>@endif
+                @if($companyEmail)<p>Email: {{ $companyEmail }}</p>@endif
+                @if($companyWebsite)<p>Website: {{ $companyWebsite }}</p>@endif
                 <p style="margin-top: 5px; color: #9ca3af; font-size: 9px;">
                     Generated on: {{ now()->format('d-m-Y h:i A') }}
                 </p>
             </div>
             <div class="footer-right">
                 <div style="margin-bottom: 10px;">
-                    <p style="font-size: 11px; color: #4b5563;">For Medical Gas ERP</p>
+                    <p style="font-size: 11px; color: #4b5563;">For {{ $companyName }}</p>
                 </div>
                 <div class="signature-line">
                     <p style="text-align: center;">Authorized Signature</p>

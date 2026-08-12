@@ -1,5 +1,7 @@
 @php
     $currentRoute = request()->route()->getName();
+    $companyName = \App\Models\Setting::get('company_name', config('app.name', 'ERP System'));
+    $companyLogoUrl = \App\Models\Setting::url('company_logo');
 @endphp
 
 <aside id="sidebar" class="sidebar">
@@ -8,12 +10,16 @@
         <!-- Logo -->
         <div class="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600">
             <div class="flex items-center space-x-3">
-                <div class="bg-white/20 rounded-lg p-2">
-                    <i class="fas fa-gas-pump text-white text-xl"></i>
+                <div class="bg-white/20 rounded-lg p-2 w-10 h-10 flex items-center justify-center overflow-hidden shrink-0">
+                    @if($companyLogoUrl)
+                        <img src="{{ $companyLogoUrl }}" alt="{{ $companyName }}" class="w-full h-full object-contain">
+                    @else
+                        <i class="fas fa-gas-pump text-white text-xl"></i>
+                    @endif
                 </div>
                 <div class="logo-text">
-                    <h1 class="text-white font-bold text-lg leading-tight">ERP System</h1>
-                    <p class="text-blue-100 text-xs">Medical Gas</p>
+                    <h1 class="text-white font-bold text-lg leading-tight">{{ $companyName }}</h1>
+                    <p class="text-blue-100 text-xs">Medical Gas ERP</p>
                 </div>
             </div>
             <button type="button" onclick="toggleSidebarCollapse()" class="hidden lg:block text-white hover:text-blue-100" title="Collapse sidebar">
