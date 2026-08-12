@@ -37,10 +37,12 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/profile/destroy', [ProfileController::class, 'destroy'])->name('profile.destroy');
     
     // Customer Routes
+    // Static routes must be registered before the resource's {customer} wildcard,
+    // otherwise e.g. GET /customers/export matches customers.show with customer="export" and 404s.
+    Route::get('/customers/export', [CustomerController::class, 'export'])->name('customers.export');
     Route::resource('customers', CustomerController::class);
     Route::patch('/customers/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])->name('customers.toggle-status');
     Route::get('/customers/{customer}/statement', [CustomerController::class, 'statement'])->name('customers.statement');
-    Route::get('/customers/export', [CustomerController::class, 'export'])->name('customers.export');
     
     // ============================================
     // CYLINDER OUTSTANDING ROUTES
@@ -78,14 +80,16 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/cylinders/import', [CylinderController::class, 'import'])->name('cylinders.import');*/
 
      // Cylinder Routes
-    Route::resource('cylinders', CylinderController::class);
+    // Static routes must be registered before the resource's {cylinder} wildcard,
+    // otherwise e.g. GET /cylinders/stock matches cylinders.show with cylinder="stock" and 404s.
     Route::get('/cylinders/stock', [CylinderController::class, 'stock'])->name('cylinders.stock');
+    Route::get('/cylinders/available', [CylinderController::class, 'available'])->name('cylinders.available');
+    Route::get('/cylinders/export', [CylinderController::class, 'export'])->name('cylinders.export');
+    Route::get('/cylinders/customer-outstanding/{customer}', [CylinderController::class, 'customerOutstanding'])->name('cylinders.customer-outstanding');
     Route::post('/cylinders/update-stock', [CylinderController::class, 'updateStock'])->name('cylinders.update-stock');
     Route::post('/cylinders/issue', [CylinderController::class, 'issue'])->name('cylinders.issue');
     Route::post('/cylinders/return', [CylinderController::class, 'returnCylinder'])->name('cylinders.return');
-    Route::get('/cylinders/available', [CylinderController::class, 'available'])->name('cylinders.available');
-    Route::get('/cylinders/customer-outstanding/{customer}', [CylinderController::class, 'customerOutstanding'])->name('cylinders.customer-outstanding');
-    Route::get('/cylinders/export', [CylinderController::class, 'export'])->name('cylinders.export');
+    Route::resource('cylinders', CylinderController::class);
 
     // Cylinder Tracking Routes
     Route::get('cylinder/tracking', [CylinderTrackingController::class, 'index'])->name('cylinders.tracking');
@@ -98,9 +102,14 @@ Route::middleware(['auth'])->group(function () {
 
 
     // Cylinder History Routes
+    // The literal "export" route must be registered before the {cylinderId} wildcard
+    // below it, otherwise /cylinders/tracking/history/export matches the wildcard
+    // with cylinderId="export" instead. Also renamed off the 'cylinders.tracking.history'
+    // name already used above (line 100) - a duplicate name silently makes route()
+    // resolve to whichever is registered last.
     Route::get('/cylinder/history', [CylinderTrackingController::class, 'history'])->name('cylinders.history');
-    Route::get('/cylinders/tracking/history/{cylinderId}', [CylinderTrackingController::class, 'getCylinderHistory'])->name('cylinders.tracking.history');
     Route::get('/cylinders/tracking/history/export', [CylinderTrackingController::class, 'exportHistory'])->name('cylinders.tracking.history.export');
+    Route::get('/cylinders/tracking/history/{cylinderId}', [CylinderTrackingController::class, 'getCylinderHistory'])->name('cylinders.tracking.history.detail');
     Route::get('/cylinders/tracking/history-report/{cylinderId}', [CylinderTrackingController::class, 'historyReport'])->name('cylinders.tracking.history-report');
     Route::get('/cylinders/tracking/timeline/{cylinderId}', [CylinderTrackingController::class, 'getTimeline'])->name('cylinders.tracking.timeline');
     Route::get('/cylinders/tracking/stats', [CylinderTrackingController::class, 'getStats'])->name('cylinders.tracking.stats');
@@ -108,11 +117,13 @@ Route::middleware(['auth'])->group(function () {
 
 
     // Supplier Routes
+    // Static routes must be registered before the resource's {supplier} wildcard,
+    // otherwise e.g. GET /suppliers/export matches suppliers.show with supplier="export" and 404s.
+    Route::get('/suppliers/export', [SupplierController::class, 'export'])->name('suppliers.export');
+    Route::get('/suppliers/statement-data', [SupplierController::class, 'getStatement'])->name('suppliers.statement-data');
     Route::resource('suppliers', SupplierController::class);
     Route::patch('/suppliers/{supplier}/toggle-status', [SupplierController::class, 'toggleStatus'])->name('suppliers.toggle-status');
     Route::get('/suppliers/{supplier}/statement', [SupplierController::class, 'statement'])->name('suppliers.statement');
-    Route::get('/suppliers/export', [SupplierController::class, 'export'])->name('suppliers.export');
-    Route::get('/suppliers/statement-data', [SupplierController::class, 'getStatement'])->name('suppliers.statement-data');
 
 
     // Account Routes
@@ -129,9 +140,11 @@ Route::middleware(['auth'])->group(function () {
 
 
     // Gas Products Routes
+    // Static routes must be registered before the resource's {gas_product} wildcard,
+    // otherwise e.g. GET /gas-products/export matches gas-products.show and 404s.
+    Route::get('/gas-products/export', [GasProductController::class, 'export'])->name('gas-products.export');
     Route::resource('gas-products', GasProductController::class);
     Route::patch('/gas-products/{gasProduct}/toggle-status', [GasProductController::class, 'toggleStatus'])->name('gas-products.toggle-status');
-    Route::get('/gas-products/export', [GasProductController::class, 'export'])->name('gas-products.export');
     Route::post('/gas-products/{gasProduct}/update-stock', [GasProductController::class, 'updateStock'])->name('gas-products.update-stock');
 
 
