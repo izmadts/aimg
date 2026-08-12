@@ -80,9 +80,15 @@
                class="nav-link {{ Str::startsWith($currentRoute, 'cylinders.') ? 'active' : '' }}">
                 <i class="fas fa-gas-pump"></i>
                 <span>Cylinders</span>
-                <span class="badge" style="background: #fef3c7; color: #92400e;" title="Cylinders currently issued to customers">
-                    {{ \App\Models\Cylinder::sum('issued_quantity') }}
+                <span class="badge" title="Total cylinder types">
+                    {{ \App\Models\Cylinder::count() }}
                 </span>
+                @php $issuedCount = \App\Models\Cylinder::sum('issued_quantity'); @endphp
+                @if($issuedCount > 0)
+                <span class="badge" style="background: #fef3c7; color: #92400e; margin-left: 0.25rem;" title="Cylinders currently issued to customers">
+                    {{ $issuedCount }} out
+                </span>
+                @endif
             </a>
             @endcan
 
