@@ -78,13 +78,12 @@
             <!-- Cylinders -->
             <a href="{{ route('cylinders.index') }}"
                class="nav-link {{ Str::startsWith($currentRoute, 'cylinders.') ? 'active' : '' }}">
-                <i class="fas fa-cylinder"></i>
+                <i class="fas fa-gas-pump"></i>
                 <span>Cylinders</span>
-                <span class="badge" style="background: #fef3c7; color: #92400e;">
+                <span class="badge" style="background: #fef3c7; color: #92400e;" title="Cylinders currently issued to customers">
                     {{ \App\Models\Cylinder::sum('issued_quantity') }}
                 </span>
             </a>
-
             @endcan
 
             <!-- Divider -->
