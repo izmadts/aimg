@@ -45,9 +45,14 @@ class Customer extends Model
         return $this->hasMany(Sale::class);
     }
 
-    public function cylinders()
+    public function cylinderIssues()
     {
-        return $this->hasMany(Cylinder::class, 'current_customer_id');
+        return $this->hasMany(CylinderIssuedDetail::class);
+    }
+
+    public function activeCylinderIssues()
+    {
+        return $this->hasMany(CylinderIssuedDetail::class)->where('status', 'issued');
     }
 
     public function cylinderTransactions()
@@ -68,20 +73,18 @@ class Customer extends Model
 
     public function scopeWithIssuedCylinders($query)
     {
-        return $query->whereHas('cylinders', function ($q) {
-            $q->where('status', 'issued');
-        });
+        return $query->whereHas('activeCylinderIssues');
     }
 
     // Accessors
     public function getIssuedCylindersAttribute()
     {
-        return $this->cylinders()->where('status', 'issued')->get();
+        return $this->activeCylinderIssues()->with('cylinder')->get();
     }
 
     public function getTotalIssuedCylindersAttribute()
     {
-        return $this->cylinders()->where('status', 'issued')->count();
+        return $this->activeCylinderIssues()->sum('quantity');
     }
 
     public function getTotalSalesAmountAttribute()

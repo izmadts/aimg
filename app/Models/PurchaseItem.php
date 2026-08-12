@@ -12,20 +12,24 @@ class PurchaseItem extends Model
     protected $fillable = [
         'purchase_id',
         'gas_product_id',
-        'quantity',
-        'price',
-        'total',
+        'gas_quantity',
+        'gas_price',
+        'gas_total',
         'cylinder_id',
         'cylinder_action',
-        'batch_number',
-        'manufacturing_date',
-        'expiry_date',
+        'cylinder_quantity',
+        'cylinder_unit_price',
+        'cylinder_total',
         'notes'
     ];
 
     protected $casts = [
-        'manufacturing_date' => 'date',
-        'expiry_date' => 'date'
+        'gas_quantity' => 'decimal:2',
+        'gas_price' => 'decimal:2',
+        'gas_total' => 'decimal:2',
+        'cylinder_quantity' => 'integer',
+        'cylinder_unit_price' => 'decimal:2',
+        'cylinder_total' => 'decimal:2',
     ];
 
     public function purchase()
@@ -43,10 +47,28 @@ class PurchaseItem extends Model
         return $this->belongsTo(Cylinder::class);
     }
 
-    // Update gas stock when purchase is confirmed
-    public function updateGasStock()
+    public function getHasGasAttribute()
     {
-        $gasProduct = $this->gasProduct;
-        $gasProduct->increment('current_stock', $this->quantity);
+        return !is_null($this->gas_product_id);
+    }
+
+    public function getHasCylinderAttribute()
+    {
+        return !is_null($this->cylinder_id);
+    }
+
+    public function getLineTotalAttribute()
+    {
+        return $this->gas_total + $this->cylinder_total;
+    }
+
+    public function getCylinderActionLabelAttribute()
+    {
+        $labels = [
+            'purchase' => 'Purchased (new/empty)',
+            'exchange' => 'Exchanged (empty for filled)',
+            'return_to_supplier' => 'Returned to supplier',
+        ];
+        return $labels[$this->cylinder_action] ?? '—';
     }
 }

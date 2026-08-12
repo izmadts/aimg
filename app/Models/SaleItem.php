@@ -12,26 +12,26 @@ class SaleItem extends Model
     protected $fillable = [
         'sale_id',
         'gas_product_id',
-        'quantity',
-        'price',
-        'total',
+        'gas_quantity',
+        'gas_price',
+        'gas_total',
         'cylinder_id',
         'cylinder_action',
-        'cylinder_sale_price',
-        'batch_number',
-        'manufacturing_date',
-        'expiry_date',
-        'grade',
+        'cylinder_quantity',
+        'cylinder_unit_price',
+        'cylinder_total',
         'notes'
     ];
 
     protected $casts = [
-        'manufacturing_date' => 'date',
-        'expiry_date' => 'date',
-        'cylinder_sale_price' => 'decimal:2',
+        'gas_quantity' => 'decimal:2',
+        'gas_price' => 'decimal:2',
+        'gas_total' => 'decimal:2',
+        'cylinder_quantity' => 'integer',
+        'cylinder_unit_price' => 'decimal:2',
+        'cylinder_total' => 'decimal:2',
     ];
 
-    // Relationships
     public function sale()
     {
         return $this->belongsTo(Sale::class);
@@ -47,30 +47,27 @@ class SaleItem extends Model
         return $this->belongsTo(Cylinder::class);
     }
 
-    // Accessors
+    public function getHasGasAttribute()
+    {
+        return !is_null($this->gas_product_id);
+    }
+
+    public function getHasCylinderAttribute()
+    {
+        return !is_null($this->cylinder_id);
+    }
+
+    public function getLineTotalAttribute()
+    {
+        return $this->gas_total + $this->cylinder_total;
+    }
+
     public function getCylinderActionLabelAttribute()
     {
         $labels = [
-            'none' => 'No Action',
-            'issued' => 'Issued',
-            'sold' => 'Sold',
-            'returned' => 'Returned'
+            'issue' => 'Issued (deposit)',
+            'sell' => 'Sold',
         ];
-        return $labels[$this->cylinder_action] ?? ucfirst($this->cylinder_action);
-    }
-
-    // Mutator
-    public function setCylinderActionAttribute($value)
-    {
-        $map = [
-            'none' => 'none',
-            'issue' => 'issued',
-            'sell' => 'sold',
-            'return' => 'returned',
-            'issued' => 'issued',
-            'sold' => 'sold',
-            'returned' => 'returned'
-        ];
-        $this->attributes['cylinder_action'] = $map[$value] ?? 'none';
+        return $labels[$this->cylinder_action] ?? '—';
     }
 }

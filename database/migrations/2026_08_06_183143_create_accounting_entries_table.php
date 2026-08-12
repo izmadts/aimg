@@ -11,8 +11,9 @@ return new class extends Migration
         Schema::create('accounting_entries', function (Blueprint $table) {
             $table->id();
             
-            // Entry identification
-            $table->string('entry_no')->unique();
+            // Entry identification. Not unique: every line of one posting
+            // event (e.g. all legs of a single sale) shares the same entry_no.
+            $table->string('entry_no');
             $table->date('date');
             $table->string('description');
             

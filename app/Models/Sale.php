@@ -61,9 +61,9 @@ class Sale extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function journalEntries()
+    public function accountingEntries()
     {
-        return $this->hasMany(JournalEntry::class);
+        return $this->morphMany(AccountingEntry::class, 'reference');
     }
 
     public function cylinderTransactions()
@@ -143,9 +143,16 @@ class Sale extends Model
     // METHODS
     // ============================================
 
+    /**
+     * Recompute header totals from line items. Items must already be saved/loaded.
+     */
     public function calculateTotals()
     {
-        $this->subtotal = $this->items->sum('total');
+        $items = $this->items()->get();
+
+        $this->subtotal = $items->sum('gas_total');
+        $this->cylinder_deposit_total = $items->where('cylinder_action', 'issue')->sum('cylinder_total');
+        $this->cylinder_sale_total = $items->where('cylinder_action', 'sell')->sum('cylinder_total');
         $this->grand_total = $this->subtotal + $this->cylinder_deposit_total + $this->cylinder_sale_total - $this->discount + $this->tax;
         $this->balance_due = $this->grand_total - $this->amount_paid;
         $this->save();

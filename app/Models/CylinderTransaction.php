@@ -12,7 +12,6 @@ class CylinderTransaction extends Model
     protected $fillable = [
         'cylinder_id',
         'customer_id',
-        'supplier_id',
         'user_id',
         'transaction_type',
         'transaction_date',
@@ -49,14 +48,6 @@ class CylinderTransaction extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
-    }
-
-    /**
-     * Get the supplier associated with this transaction.
-     */
-    public function supplier()  // ✅ This was missing
-    {
-        return $this->belongsTo(Supplier::class);
     }
 
     /**
@@ -125,14 +116,6 @@ class CylinderTransaction extends Model
     public function scopeByCustomer($query, $customerId)
     {
         return $query->where('customer_id', $customerId);
-    }
-
-    /**
-     * Scope a query to only include transactions by supplier.
-     */
-    public function scopeBySupplier($query, $supplierId)
-    {
-        return $query->where('supplier_id', $supplierId);
     }
 
     /**
@@ -220,9 +203,6 @@ class CylinderTransaction extends Model
         if ($this->customer_id) {
             return $this->customer->name ?? 'Unknown Customer';
         }
-        if ($this->supplier_id) {
-            return $this->supplier->name ?? 'Unknown Supplier';
-        }
         return 'N/A';
     }
 
@@ -253,14 +233,6 @@ class CylinderTransaction extends Model
     public function isCustomerTransaction()
     {
         return !is_null($this->customer_id);
-    }
-
-    /**
-     * Check if transaction is for supplier.
-     */
-    public function isSupplierTransaction()
-    {
-        return !is_null($this->supplier_id);
     }
 
     /**
@@ -303,9 +275,6 @@ class CylinderTransaction extends Model
         $summary = $this->type_label;
         if ($this->customer_id) {
             $summary .= ' - ' . ($this->customer->name ?? 'Unknown');
-        }
-        if ($this->supplier_id) {
-            $summary .= ' - ' . ($this->supplier->name ?? 'Unknown');
         }
         if ($this->gas_quantity_at_transaction > 0) {
             $summary .= ' - ' . $this->gas_quantity_at_transaction . ' units';

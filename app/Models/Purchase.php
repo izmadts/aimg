@@ -15,25 +15,16 @@ class Purchase extends Model
         'date',
         'delivery_date',
         'purchase_type',
-        'gas_product_id',
-        'gas_quantity',
-        'gas_price',
-        'gas_total',
-        'cylinder_id',
-        'cylinder_quantity',
-        'cylinder_purchase_price',
-        'cylinder_sale_price',
-        'cylinder_total',
         'subtotal',
+        'cylinder_total',
         'discount',
         'tax',
         'grand_total',
         'amount_paid',
         'balance_due',
+        'payment_method',
         'payment_status',
         'status',
-        'debit_account_id',
-        'credit_account_id',
         'reference_no',
         'notes',
         'created_by',
@@ -45,14 +36,8 @@ class Purchase extends Model
         'date' => 'date',
         'delivery_date' => 'date',
         'approved_at' => 'datetime',
-        'gas_quantity' => 'decimal:2',
-        'gas_price' => 'decimal:2',
-        'gas_total' => 'decimal:2',
-        'cylinder_quantity' => 'integer',
-        'cylinder_purchase_price' => 'decimal:2',
-        'cylinder_sale_price' => 'decimal:2',
-        'cylinder_total' => 'decimal:2',
         'subtotal' => 'decimal:2',
+        'cylinder_total' => 'decimal:2',
         'discount' => 'decimal:2',
         'tax' => 'decimal:2',
         'grand_total' => 'decimal:2',
@@ -64,16 +49,6 @@ class Purchase extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
-    }
-
-    public function gasProduct()
-    {
-        return $this->belongsTo(GasProduct::class);
-    }
-
-    public function cylinder()
-    {
-        return $this->belongsTo(Cylinder::class);
     }
 
     public function creator()
@@ -91,9 +66,9 @@ class Purchase extends Model
         return $this->hasMany(PurchaseItem::class);
     }
 
-    public function journalEntries()
+    public function accountingEntries()
     {
-        return $this->hasMany(JournalEntry::class);
+        return $this->morphMany(AccountingEntry::class, 'reference');
     }
 
     public function cylinderTransactions()
@@ -101,14 +76,9 @@ class Purchase extends Model
         return $this->hasMany(SupplierCylinderTransaction::class);
     }
 
-    public function debitAccount()
+    public function payments()
     {
-        return $this->belongsTo(Account::class, 'debit_account_id');
-    }
-
-    public function creditAccount()
-    {
-        return $this->belongsTo(Account::class, 'credit_account_id');
+        return $this->hasMany(PurchasePayment::class);
     }
 
     // Accessors
@@ -155,11 +125,18 @@ class Purchase extends Model
     }
 
     // Methods
+
+    /**
+     * Recompute header totals from line items. Items must already be saved/loaded.
+     */
     public function calculateTotals()
     {
-        $this->subtotal = ($this->gas_total ?? 0) + ($this->cylinder_total ?? 0);
-        $this->grand_total = $this->subtotal - ($this->discount ?? 0) + ($this->tax ?? 0);
-        $this->balance_due = $this->grand_total - ($this->amount_paid ?? 0);
+        $items = $this->items()->get();
+
+        $this->subtotal = $items->sum('gas_total');
+        $this->cylinder_total = $items->where('cylinder_action', 'purchase')->sum('cylinder_total');
+        $this->grand_total = $this->subtotal + $this->cylinder_total - $this->discount + $this->tax;
+        $this->balance_due = $this->grand_total - $this->amount_paid;
         $this->save();
         return $this;
     }
@@ -186,11 +163,6 @@ class Purchase extends Model
         ]);
         return $this;
     }
-
-    public function payments()
-{
-    return $this->hasMany(PurchasePayment::class);
-}
 
     // Boot method
     protected static function boot()

@@ -11,6 +11,11 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call([
+            UserSeeder::class,
+            AccountSeeder::class,
+        ]);
+
         // 1. Gas Products
         $oxygen = GasProduct::create([
             'name' => 'Oxygen',
@@ -44,7 +49,7 @@ class DatabaseSeeder extends Seeder
             'is_active' => true
         ]);
 
-        $customer2 = Customer::create([
+        Customer::create([
             'erp_customer_id' => 'CUST-002',
             'name' => 'Medical Store ABC',
             'phone' => '0300-7654321',
@@ -53,41 +58,44 @@ class DatabaseSeeder extends Seeder
             'is_active' => true
         ]);
 
-        // 3. Cylinders (10 test cylinders)
-        for ($i = 1; $i <= 10; $i++) {
-            Cylinder::create([
-                'cylinder_number' => 'CYL-' . str_pad($i, 4, '0', STR_PAD_LEFT),
-                'gas_product_id' => $i <= 7 ? $oxygen->id : $nitrogen->id,
-                'type' => $i <= 5 ? 'B-D Type' : 'D-Type',
-                'manufacturer' => 'Pakistan Steel',
-                'tare_weight' => 45.5,
-                'capacity' => 50,
-                'current_gas_quantity' => $i <= 3 ? 50 : 0, // 3 filled, rest empty
-                'status' => $i <= 3 ? 'in_house_filled' : 'in_house_empty',
-                'purchase_price' => 15000,
-                'purchase_date' => now()->subMonths(6),
-                'last_hydro_test_date' => now()->subMonths(11),
-                'next_hydro_test_date' => now()->addMonth()
-            ]);
-        }
-
-        // 4. Issue 2 cylinders to customer1 (for testing)
-        $cylinder1 = Cylinder::where('cylinder_number', 'CYL-0001')->first();
-        $cylinder1->update([
-            'status' => 'issued',
-            'current_customer_id' => $customer1->id
+        // 3. Cylinder types
+        $oxygenCylinder = Cylinder::create([
+            'cylinder_number' => 'CYL-0001',
+            'gas_product_id' => $oxygen->id,
+            'type' => 'B-D Type',
+            'manufacturer' => 'Pakistan Steel',
+            'tare_weight' => 45.5,
+            'capacity' => 50,
+            'stock_quantity' => 10,
+            'issued_quantity' => 0,
+            'purchase_price' => 15000,
+            'sale_price' => 18000,
+            'purchase_date' => now()->subMonths(6),
         ]);
+        $oxygenCylinder->updateStatus();
 
-        $cylinder2 = Cylinder::where('cylinder_number', 'CYL-0002')->first();
-        $cylinder2->update([
-            'status' => 'issued',
-            'current_customer_id' => $customer1->id
+        $nitrogenCylinder = Cylinder::create([
+            'cylinder_number' => 'CYL-0002',
+            'gas_product_id' => $nitrogen->id,
+            'type' => 'D-Type',
+            'manufacturer' => 'Pakistan Steel',
+            'tare_weight' => 45.5,
+            'capacity' => 50,
+            'stock_quantity' => 5,
+            'issued_quantity' => 0,
+            'purchase_price' => 15000,
+            'sale_price' => 18000,
+            'purchase_date' => now()->subMonths(6),
         ]);
+        $nitrogenCylinder->updateStatus();
+
+        // 4. Issue 2 oxygen cylinders to customer1 (for testing)
+        $oxygenCylinder->issueToCustomer($customer1->id, 2, 3000, 'SEED-TEST');
 
         $this->command->info('✅ Seeding completed successfully!');
         $this->command->info('📊 Total Customers: ' . Customer::count());
         $this->command->info('🧪 Total Gas Products: ' . GasProduct::count());
-        $this->command->info('🛢️ Total Cylinders: ' . Cylinder::count());
-        $this->command->info('📌 Issued Cylinders: ' . Cylinder::where('status', 'issued')->count());
+        $this->command->info('🛢️ Total Cylinder Types: ' . Cylinder::count());
+        $this->command->info('📌 Cylinders Issued: ' . Cylinder::sum('issued_quantity'));
     }
 }
