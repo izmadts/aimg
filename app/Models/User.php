@@ -17,7 +17,7 @@ class User extends Authenticatable
         'phone',
         'address',
         'profile_image',
-        'role',
+        'role_id',
         'is_active',
         'last_login_at',
         'email_verified_at',
@@ -61,6 +61,11 @@ class User extends Authenticatable
     }
 
     // Relationships
+    public function role()
+    {
+        return $this->belongsTo(Role::class);
+    }
+
     public function sales()
     {
         return $this->hasMany(Sale::class, 'created_by');
@@ -99,17 +104,27 @@ class User extends Authenticatable
 
     public function scopeAdmin($query)
     {
-        return $query->where('role', 'admin');
+        return $query->whereHas('role', fn ($q) => $q->where('slug', 'admin'));
     }
 
     // Methods
     public function isAdmin()
     {
-        return $this->role === 'admin';
+        return $this->role?->slug === 'admin';
     }
 
     public function isStaff()
     {
-        return $this->role === 'staff';
+        return $this->role && $this->role->slug !== 'admin';
+    }
+
+    public function hasPermission(string $slug): bool
+    {
+        return (bool) $this->role?->hasPermission($slug);
+    }
+
+    public function getRoleNameAttribute()
+    {
+        return $this->role->name ?? 'No Role';
     }
 }
