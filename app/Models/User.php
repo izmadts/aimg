@@ -96,6 +96,11 @@ class User extends Authenticatable
         return $this->hasMany(SupplierCylinderTransaction::class, 'user_id');
     }
 
+    public function journalEntries()
+    {
+        return $this->hasMany(AccountingEntry::class, 'created_by');
+    }
+
     // Scopes
     public function scopeActive($query)
     {
