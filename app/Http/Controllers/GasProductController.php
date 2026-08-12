@@ -1,0 +1,239 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\GasProduct;
+use App\Models\Cylinder;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class GasProductController extends Controller
+{
+    /**
+     * Display a listing of gas products.
+     */
+    public function index(Request $request)
+    {
+        $query = GasProduct::query();
+
+        // Search filter
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                  ->orWhere('code', 'LIKE', "%{$search}%")
+                  ->orWhere('description', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Status filter
+        if ($request->filled('status')) {
+            $query->where('is_active', $request->status == 'active');
+        }
+
+        // Sort
+        $sortField = $request->get('sort', 'name');
+        $sortDirection = $request->get('direction', 'asc');
+        $query->orderBy($sortField, $sortDirection);
+
+        $products = $query->paginate(15)->withQueryString();
+
+        // Get statistics
+        $stats = [
+            'total' => GasProduct::count(),
+            'active' => GasProduct::where('is_active', true)->count(),
+            'inactive' => GasProduct::where('is_active', false)->count(),
+            'total_stock_value' => GasProduct::where('is_active', true)->get()->sum(function ($p) {
+                return $p->current_stock * $p->purchase_price;
+            }),
+            'total_cylinders' => Cylinder::count(),
+        ];
+
+        return view('gas-products.index', compact('products', 'stats'));
+    }
+
+    /**
+     * Show the form for creating a new gas product.
+     */
+    public function create()
+    {
+        return view('gas-products.create');
+    }
+
+    /**
+     * Store a newly created gas product in storage.
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'code' => 'required|string|max:50|unique:gas_products',
+            'uom' => 'required|string|max:20',
+            'purchase_price' => 'required|numeric|min:0',
+            'sale_price' => 'required|numeric|min:0',
+            'current_stock' => 'nullable|numeric|min:0',
+            'minimum_stock_level' => 'nullable|numeric|min:0',
+            'description' => 'nullable|string|max:500',
+            'is_active' => 'boolean'
+        ]);
+
+        $validated['is_active'] = $request->has('is_active');
+        $validated['current_stock'] = $validated['current_stock'] ?? 0;
+        $validated['minimum_stock_level'] = $validated['minimum_stock_level'] ?? 0;
+
+        $product = GasProduct::create($validated);
+
+        return redirect()->route('gas-products.index')
+            ->with('success', "Gas product '{$product->name}' created successfully!");
+    }
+
+    /**
+     * Display the specified gas product.
+     */
+    public function show(GasProduct $gasProduct)
+    {
+        $gasProduct->load(['cylinders' => function ($q) {
+            $q->limit(20);
+        }]);
+
+        // Get statistics
+        $stats = [
+            'total_cylinders' => $gasProduct->cylinders()->count(),
+            'issued_cylinders' => $gasProduct->cylinders()->where('status', 'issued')->count(),
+            'in_house_cylinders' => $gasProduct->cylinders()->whereIn('status', ['in_house_empty', 'in_house_filled'])->count(),
+            'stock_value' => $gasProduct->current_stock * $gasProduct->purchase_price,
+        ];
+
+        return view('gas-products.show', compact('gasProduct', 'stats'));
+    }
+
+    /**
+     * Show the form for editing the specified gas product.
+     */
+    public function edit(GasProduct $gasProduct)
+    {
+        return view('gas-products.edit', compact('gasProduct'));
+    }
+
+    /**
+     * Update the specified gas product in storage.
+     */
+    public function update(Request $request, GasProduct $gasProduct)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'code' => 'required|string|max:50|unique:gas_products,code,' . $gasProduct->id,
+            'uom' => 'required|string|max:20',
+            'purchase_price' => 'required|numeric|min:0',
+            'sale_price' => 'required|numeric|min:0',
+            'current_stock' => 'nullable|numeric|min:0',
+            'minimum_stock_level' => 'nullable|numeric|min:0',
+            'description' => 'nullable|string|max:500',
+            'is_active' => 'boolean'
+        ]);
+
+        $validated['is_active'] = $request->has('is_active');
+        $validated['current_stock'] = $validated['current_stock'] ?? 0;
+        $validated['minimum_stock_level'] = $validated['minimum_stock_level'] ?? 0;
+
+        $gasProduct->update($validated);
+
+        return redirect()->route('gas-products.index')
+            ->with('success', "Gas product '{$gasProduct->name}' updated successfully!");
+    }
+
+    /**
+     * Remove the specified gas product from storage.
+     */
+    public function destroy(GasProduct $gasProduct)
+    {
+        // Check if product has any cylinders
+        if ($gasProduct->cylinders()->exists()) {
+            return redirect()->route('gas-products.index')
+                ->with('error', "Cannot delete '{$gasProduct->name}' because it has cylinders.");
+        }
+
+        $gasProduct->delete();
+
+        return redirect()->route('gas-products.index')
+            ->with('success', "Gas product '{$gasProduct->name}' deleted successfully!");
+    }
+
+    /**
+     * Toggle product status.
+     */
+    public function toggleStatus(GasProduct $gasProduct)
+    {
+        $gasProduct->is_active = !$gasProduct->is_active;
+        $gasProduct->save();
+
+        $status = $gasProduct->is_active ? 'activated' : 'deactivated';
+
+        return redirect()->route('gas-products.index')
+            ->with('success', "Gas product '{$gasProduct->name}' {$status} successfully!");
+    }
+
+    /**
+     * Export gas products to CSV.
+     */
+    public function export()
+    {
+        $products = GasProduct::where('is_active', true)->get();
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="gas_products_' . date('Y-m-d') . '.csv"',
+        ];
+
+        $callback = function () use ($products) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['ID', 'Name', 'Code', 'UOM', 'Purchase Price', 'Sale Price', 'Current Stock', 'Min Stock', 'Status']);
+
+            foreach ($products as $product) {
+                fputcsv($file, [
+                    $product->id,
+                    $product->name,
+                    $product->code,
+                    $product->uom,
+                    $product->purchase_price,
+                    $product->sale_price,
+                    $product->current_stock,
+                    $product->minimum_stock_level,
+                    $product->is_active ? 'Active' : 'Inactive'
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Update stock via AJAX.
+     */
+    public function updateStock(Request $request, GasProduct $gasProduct)
+    {
+        $request->validate([
+            'quantity' => 'required|numeric',
+            'type' => 'required|in:add,subtract'
+        ]);
+
+        if ($request->type === 'add') {
+            $gasProduct->increment('current_stock', $request->quantity);
+        } else {
+            if ($gasProduct->current_stock < $request->quantity) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Insufficient stock!'
+                ], 400);
+            }
+            $gasProduct->decrement('current_stock', $request->quantity);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Stock updated successfully!',
+            'current_stock' => $gasProduct->current_stock
+        ]);
+    }
+}
