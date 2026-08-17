@@ -23,14 +23,11 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
-                <!-- ERP Customer ID -->
+                <!-- Customer ID -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">ERP Customer ID</label>
-                    <input type="text" name="erp_customer_id" value="{{ old('erp_customer_id', $customer->erp_customer_id) }}"
-                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                    @error('erp_customer_id')
-                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
-                    @enderror
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Customer ID</label>
+                    <input type="text" value="{{ $customer->customer_code }}" disabled
+                           class="w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm text-gray-500">
                 </div>
 
                 <!-- Name -->
@@ -45,10 +42,21 @@
 
                 <!-- Phone -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                    <input type="text" name="phone" value="{{ old('phone', $customer->phone) }}"
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
+                    <input type="text" name="phone" value="{{ old('phone', $customer->phone) }}" required
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('phone')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- ERP Customer ID (legacy system reference) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Old System ID</label>
+                    <input type="text" name="erp_customer_id" value="{{ old('erp_customer_id', $customer->erp_customer_id) }}"
+                           placeholder="Optional — ID from a previous system"
+                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    @error('erp_customer_id')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
@@ -89,6 +97,16 @@
                     <input type="number" step="0.01" name="security_deposit" value="{{ old('security_deposit', $customer->security_deposit) }}"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('security_deposit')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Opening Balance -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Opening Balance (Rs.)</label>
+                    <input type="number" step="0.01" name="opening_balance" value="{{ old('opening_balance', $customer->opening_balance) }}"
+                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    @error('opening_balance')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>

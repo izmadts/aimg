@@ -58,8 +58,9 @@
                     </div>
                     <div>
                         <h2 class="text-xl font-bold">{{ $customer->name }}</h2>
+                        <p class="text-sm text-gray-500 font-mono">{{ $customer->customer_code }}</p>
                         @if($customer->erp_customer_id)
-                            <p class="text-sm text-gray-500">ID: {{ $customer->erp_customer_id }}</p>
+                            <p class="text-xs text-gray-400">Old ID: {{ $customer->erp_customer_id }}</p>
                         @endif
                     </div>
                 </div>

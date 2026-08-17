@@ -49,7 +49,7 @@ class DashboardController extends Controller
 
             'cylinder_asset_value' => Cylinder::where('status', '!=', 'scrapped')->sum(DB::raw('purchase_price * stock_quantity')),
 
-            'pending_receivables' => Sale::where('payment_status', '!=', 'paid')->where('status', '!=', 'cancelled')->sum('balance_due'),
+            'pending_receivables' => Sale::where('payment_status', '!=', 'paid')->where('status', '!=', 'cancelled')->sum('balance_due') + Customer::sum('opening_balance'),
             'pending_payables' => Purchase::where('payment_status', '!=', 'paid')->where('status', '!=', 'cancelled')->sum('balance_due'),
         ];
 

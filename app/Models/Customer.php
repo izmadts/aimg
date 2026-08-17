@@ -10,6 +10,7 @@ class Customer extends Model
     use HasFactory;
 
     protected $fillable = [
+        'customer_code',
         'erp_customer_id',
         'name',
         'phone',
@@ -18,6 +19,7 @@ class Customer extends Model
         'ntn_number',
         'cnic',
         'security_deposit',
+        'opening_balance',
         'is_active',
         'notes',
         'created_by',
@@ -26,7 +28,8 @@ class Customer extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
-        'security_deposit' => 'decimal:2'
+        'security_deposit' => 'decimal:2',
+        'opening_balance' => 'decimal:2'
     ];
 
     // Relationships
@@ -94,7 +97,8 @@ class Customer extends Model
 
     public function getPendingBalanceAttribute()
     {
-        return $this->sales()->where('payment_status', '!=', 'paid')->sum('balance_due');
+        return $this->sales()->where('payment_status', '!=', 'paid')->sum('balance_due')
+            + $this->opening_balance;
     }
 
     // Boot method
@@ -103,6 +107,12 @@ class Customer extends Model
         parent::boot();
 
         static::creating(function ($model) {
+            if (empty($model->customer_code)) {
+                $last = self::orderBy('id', 'desc')->first();
+                $nextId = $last ? $last->id + 1 : 1;
+                $model->customer_code = 'CUST-' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
+            }
+
             if (auth()->check() && empty($model->created_by)) {
                 $model->created_by = auth()->id();
             }

@@ -10,6 +10,7 @@ class Supplier extends Model
     use HasFactory;
 
     protected $fillable = [
+        'supplier_code',
         'erp_supplier_id',
         'name',
         'company_name',
@@ -157,6 +158,12 @@ class Supplier extends Model
         parent::boot();
 
         static::creating(function ($model) {
+            if (empty($model->supplier_code)) {
+                $last = self::orderBy('id', 'desc')->first();
+                $nextId = $last ? $last->id + 1 : 1;
+                $model->supplier_code = 'SUPP-' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
+            }
+
             if (auth()->check() && empty($model->created_by)) {
                 $model->created_by = auth()->id();
             }

@@ -123,6 +123,13 @@
                     {{ \App\Models\CylinderTransaction::count() }}
                 </span>
             </a>
+
+            <!-- Gas Transfers -->
+            <a href="{{ route('cylinders.transfers') }}"
+               class="nav-link {{ Str::startsWith($currentRoute, 'cylinders.transfers') ? 'active' : '' }}">
+                <i class="fas fa-truck-loading"></i>
+                <span>Gas Transfers</span>
+            </a>
             @endcan
 
             @canany(['customers.view', 'suppliers.view'])

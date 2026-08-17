@@ -254,6 +254,88 @@ class CylinderController extends Controller
     }
 
     // ============================================
+    // GAS TRANSFER (Bulk/Bowser -> Cylinders)
+    // ============================================
+    public function transfers(Request $request)
+    {
+        $gasProducts = GasProduct::where('is_active', true)->orderBy('name')->get();
+        $cylinders = Cylinder::with('gasProduct')
+            ->whereIn('status', ['in_house', 'partial_issued', 'all_issued', 'out_of_stock'])
+            ->orderBy('type')
+            ->get();
+
+        $query = \App\Models\CylinderTransaction::with(['cylinder.gasProduct', 'user'])
+            ->where('transaction_type', 'filled');
+
+        if ($request->filled('gas_product_id')) {
+            $query->whereHas('cylinder', function ($q) use ($request) {
+                $q->where('gas_product_id', $request->gas_product_id);
+            });
+        }
+        if ($request->filled('cylinder_id')) {
+            $query->where('cylinder_id', $request->cylinder_id);
+        }
+
+        $transfers = $query->orderBy('transaction_date', 'desc')->orderBy('id', 'desc')->paginate(15);
+
+        return view('cylinders.transfers', compact('gasProducts', 'cylinders', 'transfers'));
+    }
+
+    public function storeTransfer(Request $request)
+    {
+        $validated = $request->validate([
+            'gas_product_id' => 'required|exists:gas_products,id',
+            'cylinder_id' => 'required|exists:cylinders,id',
+            'gas_quantity' => 'required|numeric|min:0.01',
+            'cylinder_quantity' => 'nullable|integer|min:1',
+            'transfer_date' => 'nullable|date',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $gasProduct = GasProduct::lockForUpdate()->findOrFail($validated['gas_product_id']);
+        $cylinder = Cylinder::findOrFail($validated['cylinder_id']);
+
+        if ($cylinder->gas_product_id !== $gasProduct->id) {
+            return redirect()->back()->withInput()
+                ->with('error', "{$cylinder->cylinder_number} ({$cylinder->type}) is not filled with {$gasProduct->name} — pick a matching cylinder type.");
+        }
+
+        if ($validated['gas_quantity'] > $gasProduct->current_stock) {
+            return redirect()->back()->withInput()
+                ->with('error', "Not enough {$gasProduct->name} in the bulk/bowser stock. Available: {$gasProduct->current_stock} {$gasProduct->uom}.");
+        }
+
+        $cylinderQuantity = $validated['cylinder_quantity'] ?? null;
+        if ($cylinderQuantity && $cylinderQuantity > $cylinder->available_quantity) {
+            return redirect()->back()->withInput()
+                ->with('error', "Only {$cylinder->available_quantity} {$cylinder->type} cylinder(s) are free to fill (the rest are already issued).");
+        }
+
+        DB::transaction(function () use ($gasProduct, $cylinder, $validated, $cylinderQuantity) {
+            $gasProduct->decrement('current_stock', $validated['gas_quantity']);
+
+            $remarks = $cylinderQuantity
+                ? "Filled {$cylinderQuantity} x {$cylinder->type} cylinder(s) with {$validated['gas_quantity']} {$gasProduct->uom} of {$gasProduct->name} from bulk/bowser stock"
+                : "Transferred {$validated['gas_quantity']} {$gasProduct->uom} of {$gasProduct->name} into {$cylinder->type} cylinders from bulk/bowser stock";
+
+            if (! empty($validated['notes'])) {
+                $remarks .= " — {$validated['notes']}";
+            }
+
+            $cylinder->transactions()->create([
+                'user_id' => auth()->id(),
+                'transaction_type' => 'filled',
+                'transaction_date' => $validated['transfer_date'] ?? now(),
+                'gas_quantity_at_transaction' => $validated['gas_quantity'],
+                'remarks' => $remarks,
+            ]);
+        });
+
+        return redirect()->route('cylinders.transfers')
+            ->with('success', "Transferred {$validated['gas_quantity']} {$gasProduct->uom} of {$gasProduct->name} into {$cylinder->type} cylinders. Remaining bulk stock: {$gasProduct->fresh()->current_stock} {$gasProduct->uom}.");
+    }
+
+    // ============================================
     // ISSUE CYLINDER (AJAX)
     // ============================================
     public function issue(Request $request)

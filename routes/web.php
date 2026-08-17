@@ -66,10 +66,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/cylinders/export', [CylinderController::class, 'export'])->name('cylinders.export');
         Route::get('/cylinders/customer-outstanding/{customer}', [CylinderController::class, 'customerOutstanding'])->name('cylinders.customer-outstanding');
     });
+    Route::middleware('permission:cylinders.view')->group(function () {
+        Route::get('/cylinders/transfers', [CylinderController::class, 'transfers'])->name('cylinders.transfers');
+    });
     Route::middleware('permission:cylinders.edit')->group(function () {
         Route::post('/cylinders/update-stock', [CylinderController::class, 'updateStock'])->name('cylinders.update-stock');
         Route::post('/cylinders/issue', [CylinderController::class, 'issue'])->name('cylinders.issue');
         Route::post('/cylinders/return', [CylinderController::class, 'returnCylinder'])->name('cylinders.return');
+        Route::post('/cylinders/transfer', [CylinderController::class, 'storeTransfer'])->name('cylinders.transfer.store');
     });
     Route::resource('cylinders', CylinderController::class)
         ->middlewareFor(['index', 'show'], 'permission:cylinders.view')

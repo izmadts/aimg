@@ -92,7 +92,7 @@
                 <tbody class="divide-y divide-gray-200">
                     @forelse($customers as $customer)
                     <tr class="hover:bg-gray-50 transition">
-                        <td class="px-6 py-3 text-sm text-gray-500">#{{ $customer->id }}</td>
+                        <td class="px-6 py-3 text-sm text-gray-500 font-mono">{{ $customer->customer_code ?? '#'.$customer->id }}</td>
                         <td class="px-6 py-3">
                             <span class="font-medium">{{ $customer->name }}</span>
                             @if($customer->erp_customer_id)

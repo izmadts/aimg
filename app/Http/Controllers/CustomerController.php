@@ -58,7 +58,9 @@ class CustomerController extends Controller
      */
     public function create()
     {
-        return view('customers.create');
+        $cylinders = Cylinder::with('gasProduct')->orderBy('type')->get();
+
+        return view('customers.create', compact('cylinders'));
     }
 
     /**
@@ -69,20 +71,42 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'erp_customer_id' => 'nullable|string|max:50|unique:customers',
             'name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'required|string|max:20',
             'email' => 'nullable|email|max:255|unique:customers',
             'address' => 'nullable|string|max:500',
             'ntn_number' => 'nullable|string|max:50',
             'cnic' => 'nullable|string|max:20|unique:customers',
             'security_deposit' => 'nullable|numeric|min:0',
+            'opening_balance' => 'nullable|numeric|min:0',
             'is_active' => 'boolean',
-            'notes' => 'nullable|string|max:1000'
+            'notes' => 'nullable|string|max:1000',
+            'opening_cylinders' => 'nullable|array',
+            'opening_cylinders.*.cylinder_id' => 'required_with:opening_cylinders|exists:cylinders,id',
+            'opening_cylinders.*.quantity' => 'required_with:opening_cylinders|integer|min:1',
+            'opening_cylinders.*.security_deposit' => 'nullable|numeric|min:0',
         ]);
 
         $validated['is_active'] = $request->has('is_active');
         $validated['security_deposit'] = $validated['security_deposit'] ?? 0;
+        $validated['opening_balance'] = $validated['opening_balance'] ?? 0;
+        $openingCylinders = $validated['opening_cylinders'] ?? [];
+        unset($validated['opening_cylinders']);
 
-        $customer = Customer::create($validated);
+        $customer = DB::transaction(function () use ($validated, $openingCylinders) {
+            $customer = Customer::create($validated);
+
+            foreach ($openingCylinders as $row) {
+                $cylinder = Cylinder::findOrFail($row['cylinder_id']);
+                $cylinder->issueToCustomer(
+                    $customer->id,
+                    (int) $row['quantity'],
+                    (float) ($row['security_deposit'] ?? 0),
+                    'Opening balance at onboarding'
+                );
+            }
+
+            return $customer;
+        });
 
         return redirect()->route('customers.index')
             ->with('success', "Customer '{$customer->name}' created successfully!");
@@ -104,7 +128,7 @@ class CustomerController extends Controller
             'total_sales_amount' => $customer->sales()->where('status', '!=', 'cancelled')->sum('grand_total'),
             'total_issued_cylinders' => $customer->activeCylinderIssues()->sum('quantity'),
             'total_cylinder_transactions' => $customer->cylinderTransactions()->count(),
-            'pending_balance' => $customer->sales()->where('payment_status', '!=', 'paid')->sum('balance_due'),
+            'pending_balance' => $customer->sales()->where('payment_status', '!=', 'paid')->sum('balance_due') + $customer->opening_balance,
         ];
 
         // Get cylinder transaction history
@@ -140,18 +164,20 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'erp_customer_id' => 'nullable|string|max:50|unique:customers,erp_customer_id,' . $customer->id,
             'name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'required|string|max:20',
             'email' => 'nullable|email|max:255|unique:customers,email,' . $customer->id,
             'address' => 'nullable|string|max:500',
             'ntn_number' => 'nullable|string|max:50',
             'cnic' => 'nullable|string|max:20|unique:customers,cnic,' . $customer->id,
             'security_deposit' => 'nullable|numeric|min:0',
+            'opening_balance' => 'nullable|numeric|min:0',
             'is_active' => 'boolean',
             'notes' => 'nullable|string|max:1000'
         ]);
 
         $validated['is_active'] = $request->has('is_active');
         $validated['security_deposit'] = $validated['security_deposit'] ?? 0;
+        $validated['opening_balance'] = $validated['opening_balance'] ?? 0;
 
         $customer->update($validated);
 

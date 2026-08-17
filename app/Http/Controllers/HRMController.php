@@ -89,9 +89,11 @@ class HRMController extends Controller
             'notes' => 'nullable|string'
         ]);
 
-        $validated['net_salary'] = ($validated['basic_salary'] ?? 0) 
-            + ($validated['allowances'] ?? 0) 
-            - ($validated['deductions'] ?? 0);
+        $validated['allowances'] = $validated['allowances'] ?? 0;
+        $validated['deductions'] = $validated['deductions'] ?? 0;
+        $validated['net_salary'] = ($validated['basic_salary'] ?? 0)
+            + $validated['allowances']
+            - $validated['deductions'];
         $validated['is_active'] = $request->has('is_active') ? 1 : 0;
 
         $employee = Employee::create($validated);
@@ -154,9 +156,11 @@ class HRMController extends Controller
             'notes' => 'nullable|string'
         ]);
 
-        $validated['net_salary'] = ($validated['basic_salary'] ?? 0) 
-            + ($validated['allowances'] ?? 0) 
-            - ($validated['deductions'] ?? 0);
+        $validated['allowances'] = $validated['allowances'] ?? 0;
+        $validated['deductions'] = $validated['deductions'] ?? 0;
+        $validated['net_salary'] = ($validated['basic_salary'] ?? 0)
+            + $validated['allowances']
+            - $validated['deductions'];
         $validated['is_active'] = $request->has('is_active') ? 1 : 0;
 
         $employee->update($validated);

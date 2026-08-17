@@ -23,14 +23,11 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
-                <!-- ERP Supplier ID -->
+                <!-- Supplier ID -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">ERP Supplier ID</label>
-                    <input type="text" name="erp_supplier_id" value="{{ old('erp_supplier_id', $supplier->erp_supplier_id) }}"
-                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                    @error('erp_supplier_id')
-                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
-                    @enderror
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier ID</label>
+                    <input type="text" value="{{ $supplier->supplier_code }}" disabled
+                           class="w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm text-gray-500">
                 </div>
 
                 <!-- Name -->
@@ -55,10 +52,21 @@
 
                 <!-- Phone -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                    <input type="text" name="phone" value="{{ old('phone', $supplier->phone) }}"
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
+                    <input type="text" name="phone" value="{{ old('phone', $supplier->phone) }}" required
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('phone')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- ERP Supplier ID (legacy system reference) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Old System ID</label>
+                    <input type="text" name="erp_supplier_id" value="{{ old('erp_supplier_id', $supplier->erp_supplier_id) }}"
+                           placeholder="Optional — ID from a previous system"
+                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    @error('erp_supplier_id')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
