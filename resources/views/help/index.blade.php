@@ -44,6 +44,8 @@
             <div class="flex items-center gap-2"><i class="fas fa-hand-holding text-green-600 w-5"></i> Issue to a customer</div>
             <div class="flex items-center gap-2"><i class="fas fa-boxes text-teal-600 w-5"></i> Update stock quantity</div>
             <div class="flex items-center gap-2"><i class="fas fa-file-export text-gray-600 w-5"></i> Export to a file</div>
+            <div class="flex items-center gap-2"><i class="fas fa-undo text-green-600 w-5"></i> Return a cylinder</div>
+            <div class="flex items-center gap-2"><i class="fas fa-truck-loading text-blue-600 w-5"></i> Gas transfer (bulk → cylinder)</div>
         </div>
         <p class="text-xs text-gray-500 mt-4">
             <strong>A note on Delete:</strong> deleting a record that already affected your accounts (a paid salary, an
@@ -65,7 +67,12 @@
 
             <div>
                 <h3 class="font-semibold text-gray-900"><i class="fas fa-gas-pump text-yellow-600 mr-2"></i>Cylinders</h3>
-                <p class="text-sm text-gray-600 mt-1">Cylinders are tracked by <em>type</em> (e.g. "Oxygen — Large"), not one by one. Each type shows how many you own (Stock), how many are currently with customers (Issued), and how many are free in your warehouse (Available). From here you can issue a cylinder to a customer, record one coming back, or adjust stock.</p>
+                <p class="text-sm text-gray-600 mt-1">Cylinders are tracked by <em>type</em> (e.g. "Oxygen — Large"), not one by one. Each type shows how many you own in <strong>Total</strong>, how many are currently with customers (<strong>Issued</strong>), and how many are free in your warehouse (<strong>Available</strong>). From here you can issue a cylinder to a customer, record one coming back, or adjust stock.</p>
+            </div>
+
+            <div>
+                <h3 class="font-semibold text-gray-900"><i class="fas fa-truck-loading text-blue-500 mr-2"></i>Gas Transfers</h3>
+                <p class="text-sm text-gray-600 mt-1">When you buy gas in bulk (a "bowser"/"bonser" delivery) and then load it into your saleable cylinders, use <strong>Cylinders → Gas Transfers</strong> to record it: pick the gas, pick which cylinder size received it, and how much gas moved. This reduces your bulk stock total and keeps a permanent record of which cylinder sizes were filled. It doesn't change how many cylinders you own — only gas moving from bulk storage into your cylinder stock.</p>
             </div>
 
             <div>
@@ -80,7 +87,7 @@
 
             <div>
                 <h3 class="font-semibold text-gray-900"><i class="fas fa-users text-green-600 mr-2"></i>Customers &amp; <i class="fas fa-truck text-orange-500 mr-1"></i>Suppliers</h3>
-                <p class="text-sm text-gray-600 mt-1">Your contact list of who you sell to and who you buy from. Each one has a statement showing their full sales/purchase and payment history with you.</p>
+                <p class="text-sm text-gray-600 mt-1">Your contact list of who you sell to and who you buy from. Each one has a statement showing their full sales/purchase and payment history with you. Every new customer/supplier gets an ID automatically (e.g. <code class="bg-gray-100 px-1 rounded">CUST-000001</code>) — you don't type one in. Phone number is required; everything else is optional. If a customer or supplier already had a balance before you started using this system, enter it as their <strong>Opening Balance</strong> when adding them. If a customer is already holding some of your cylinders from before (e.g. moving over from a paper record), list them under <strong>Cylinders Already With This Customer</strong> on the same form so your stock stays accurate.</p>
             </div>
 
             <div>
@@ -117,8 +124,10 @@
                     <tr><td class="px-6 py-3 text-gray-700">Sell gas or a cylinder to a customer</td><td class="px-6 py-3 font-medium">Sales → Add Sale</td></tr>
                     <tr><td class="px-6 py-3 text-gray-700">Record money received from a customer</td><td class="px-6 py-3 font-medium">Sales → open the invoice → Record Payment</td></tr>
                     <tr><td class="px-6 py-3 text-gray-700">Hand a cylinder to a customer / take one back</td><td class="px-6 py-3 font-medium">Cylinders → Issue / Return</td></tr>
+                    <tr><td class="px-6 py-3 text-gray-700">Move gas from bulk/bowser stock into cylinders</td><td class="px-6 py-3 font-medium">Cylinders → Gas Transfers → New Transfer</td></tr>
                     <tr><td class="px-6 py-3 text-gray-700">Add new stock after buying from a supplier</td><td class="px-6 py-3 font-medium">Purchases → Add Purchase</td></tr>
                     <tr><td class="px-6 py-3 text-gray-700">Add a new gas type or cylinder size</td><td class="px-6 py-3 font-medium">Gas Products / Cylinders → Add, using Units / Cylinder Types to add new dropdown options first if needed</td></tr>
+                    <tr><td class="px-6 py-3 text-gray-700">Onboard a customer who already owes money or holds cylinders</td><td class="px-6 py-3 font-medium">Customers → Add Customer → fill in Opening Balance and/or Cylinders Already With This Customer</td></tr>
                     <tr><td class="px-6 py-3 text-gray-700">Pay staff salary</td><td class="px-6 py-3 font-medium">HRM → Salaries → Process Salary, then Pay</td></tr>
                     <tr><td class="px-6 py-3 text-gray-700">Record rent, utilities, or other expenses</td><td class="px-6 py-3 font-medium">Income/Expense → Add Expense</td></tr>
                     <tr><td class="px-6 py-3 text-gray-700">See if the business is profitable this month</td><td class="px-6 py-3 font-medium">Accounting → Income Statement</td></tr>
