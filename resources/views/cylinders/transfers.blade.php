@@ -204,15 +204,22 @@
     </div>
 </div>
 
-@push('scripts')
-<script>
-    const transferCylinders = @json($cylinders->map(function ($c) {
+@php
+    $transferCylindersJson = $cylinders->map(function ($c) {
+        $label = $c->cylinder_number . ' — ' . $c->type
+            . ' (' . $c->available_quantity . ' free of ' . $c->stock_quantity . ' owned)';
+
         return [
             'id' => $c->id,
-            'label' => $c->cylinder_number . ' — ' . $c->type . ' (' . $c->available_quantity . ' free of ' . $c->stock_quantity . ' owned)',
+            'label' => $label,
             'gas_product_id' => $c->gas_product_id,
         ];
-    }));
+    });
+@endphp
+
+@push('scripts')
+<script>
+    const transferCylinders = @json($transferCylindersJson);
 
     function filterTransferCylinders() {
         const gasSelect = document.getElementById('transfer_gas_product_id');

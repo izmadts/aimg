@@ -170,14 +170,21 @@
     </div>
 </div>
 
-@push('scripts')
-<script>
-    const openingCylinderOptions = @json($cylinders->map(function ($c) {
+@php
+    $openingCylinderOptionsJson = $cylinders->map(function ($c) {
+        $gasName = $c->gasProduct->name ?? 'N/A';
+        $label = $c->cylinder_number . ' — ' . $c->type . ' (' . $gasName . ')';
+
         return [
             'id' => $c->id,
-            'label' => $c->cylinder_number . ' — ' . $c->type . ' (' . ($c->gasProduct->name ?? 'N/A') . ')',
+            'label' => $label,
         ];
-    }));
+    });
+@endphp
+
+@push('scripts')
+<script>
+    const openingCylinderOptions = @json($openingCylinderOptionsJson);
 
     let openingCylinderCount = 0;
 
