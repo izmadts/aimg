@@ -430,25 +430,6 @@ class Cylinder extends Model
         return true;
     }
 
-    public function autoDetectSalePrice()
-    {
-        if ($this->gasProduct) {
-            $salePrice = $this->purchase_price * 1.2;
-            if ($this->gasProduct->sale_price && $this->gasProduct->sale_price > 0) {
-                $salePrice = $this->gasProduct->sale_price;
-            }
-            $salePrice += $this->getCylinderPremium();
-            return round($salePrice, 2);
-        }
-        return 0;
-    }
-
-    private function getCylinderPremium()
-    {
-        $type = CylinderType::where('name', $this->type)->first();
-        return $type ? (float) $type->price_premium : 1500;
-    }
-
     // ============================================
     // BOOT METHOD
     // ============================================

@@ -45,7 +45,7 @@
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         <option value="">Select UOM</option>
                         @foreach($units as $unit)
-                            <option value="{{ $unit->name }}" {{ old('uom') == $unit->name ? 'selected' : '' }}>{{ $unit->name }}</option>
+                            <option value="{{ $unit->name }}" {{ old('uom', 'Cubic Meter') == $unit->name ? 'selected' : '' }}>{{ $unit->name }}</option>
                         @endforeach
                     </select>
                     @can('units.manage')

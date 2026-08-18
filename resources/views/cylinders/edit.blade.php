@@ -58,7 +58,7 @@
                             onchange="autoDetectPrice()">
                         <option value="">Select Type</option>
                         @foreach($cylinderTypes as $cylinderType)
-                            <option value="{{ $cylinderType->name }}" data-premium="{{ $cylinderType->price_premium }}"
+                            <option value="{{ $cylinderType->name }}"
                                     data-capacity="{{ $cylinderType->capacity }}"
                                     {{ old('type', $cylinder->type) == $cylinderType->name ? 'selected' : '' }}>
                                 {{ $cylinderType->name }}{{ $cylinderType->capacity ? ' (' . $cylinderType->capacity . ' m3)' : '' }}
@@ -94,9 +94,10 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Capacity *</label>
-                    <input type="number" step="0.01" name="capacity" id="capacity" value="{{ old('capacity', $cylinder->capacity) }}" required
-                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Capacity (m3)</label>
+                    <input type="number" step="0.01" name="capacity" id="capacity" value="{{ old('capacity', $cylinder->capacity) }}" required readonly
+                           class="w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm text-gray-600">
+                    <p class="text-xs text-gray-400 mt-1">Comes from the selected Type — set it there if it's wrong.</p>
                     @error('capacity')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                     @enderror
@@ -118,7 +119,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Price (Rs.) *</label>
-                            <input type="number" step="0.01" name="purchase_price" value="{{ old('purchase_price', $cylinder->purchase_price) }}" required
+                            <input type="number" step="0.01" name="purchase_price" id="purchase_price" value="{{ old('purchase_price', $cylinder->purchase_price) }}" required
                                    class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                    oninput="calculatePrices()">
                             @error('purchase_price')
@@ -127,7 +128,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Sale Price (Rs.) *</label>
-                            <input type="number" step="0.01" name="sale_price" value="{{ old('sale_price', $cylinder->sale_price) }}" required
+                            <input type="number" step="0.01" name="sale_price" id="sale_price" value="{{ old('sale_price', $cylinder->sale_price) }}" required
                                    class="w-full rounded-lg border-green-300 bg-green-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 font-bold text-green-700"
                                    oninput="calculatePrices()">
                             @error('sale_price')
@@ -215,24 +216,18 @@
         const gasSalePrice = parseFloat(selectedOption.dataset.salePrice) || 0;
 
         const typeOption = typeSelect.options[typeSelect.selectedIndex];
-        const premium = parseFloat(typeOption.dataset.premium) || 500;
         const typeCapacity = parseFloat(typeOption.dataset.capacity) || 0;
 
         const capacityInput = document.getElementById('capacity');
-        if (typeCapacity > 0 && capacityInput && !capacityInput.value) {
-            capacityInput.value = typeCapacity.toFixed(2);
+        if (capacityInput) {
+            capacityInput.value = typeCapacity > 0 ? typeCapacity.toFixed(2) : '';
         }
 
         if (gasPurchasePrice > 0) {
             purchasePriceInput.value = gasPurchasePrice.toFixed(2);
         }
 
-        let salePrice = 0;
-        if (gasSalePrice > 0) {
-            salePrice = gasSalePrice + premium;
-        } else {
-            salePrice = (gasPurchasePrice * 1.2) + premium;
-        }
+        let salePrice = gasSalePrice > 0 ? gasSalePrice : (gasPurchasePrice * 1.2);
         salePriceInput.value = salePrice.toFixed(2);
 
         calculatePrices();
@@ -259,11 +254,11 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        if (document.getElementById('gas_product_id').value && document.getElementById('type').value) {
-            autoDetectPrice();
-        } else {
-            calculatePrices();
-        }
+        // Only recompute the read-only margin/totals here — don't call
+        // autoDetectPrice() on load, or it would silently overwrite this
+        // cylinder's actual stored capacity/prices with fresh suggestions
+        // before the user has touched anything.
+        calculatePrices();
     });
 </script>
 @endpush

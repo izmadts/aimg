@@ -156,7 +156,7 @@ class CylinderController extends Controller
 
         // Keep the cylinder's current type selectable even if it was since deactivated/renamed away.
         if ($cylinder->type && ! $cylinderTypes->contains('name', $cylinder->type)) {
-            $cylinderTypes->push(new CylinderType(['name' => $cylinder->type, 'price_premium' => 1500]));
+            $cylinderTypes->push(new CylinderType(['name' => $cylinder->type]));
         }
 
         return view('cylinders.edit', compact('cylinder', 'gasProducts', 'suppliers', 'cylinderTypes'));

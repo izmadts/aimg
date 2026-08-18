@@ -10,10 +10,10 @@ class CylinderTypeSeeder extends Seeder
     public function run(): void
     {
         $types = [
-            ['name' => 'Extra Small', 'capacity' => 1.7, 'price_premium' => 1500],
-            ['name' => 'Small', 'capacity' => 3.4, 'price_premium' => 2000],
-            ['name' => 'Medium', 'capacity' => 8.8, 'price_premium' => 3000],
-            ['name' => 'Large', 'capacity' => 9.9, 'price_premium' => 3500],
+            ['name' => 'Extra Small', 'capacity' => 1.7],
+            ['name' => 'Small', 'capacity' => 3.4],
+            ['name' => 'Medium', 'capacity' => 8.8],
+            ['name' => 'Large', 'capacity' => 9.9],
         ];
 
         foreach ($types as $type) {
