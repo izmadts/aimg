@@ -73,7 +73,7 @@ class SaleController extends Controller
         $customers = Customer::where('is_active', true)->get();
         $gasProducts = GasProduct::where('is_active', true)->where('current_stock', '>', 0)->get();
 
-        $availableCylinders = Cylinder::whereColumn('stock_quantity', '>', 'issued_quantity')
+        $availableCylinders = Cylinder::where('filled_quantity', '>', 0)
             ->with('gasProduct')
             ->get()
             ->map(function ($cylinder) {
@@ -204,7 +204,7 @@ class SaleController extends Controller
 
         $customers = Customer::where('is_active', true)->get();
         $gasProducts = GasProduct::where('is_active', true)->get();
-        $availableCylinders = Cylinder::whereColumn('stock_quantity', '>', 'issued_quantity')
+        $availableCylinders = Cylinder::where('filled_quantity', '>', 0)
             ->with('gasProduct')
             ->get();
 

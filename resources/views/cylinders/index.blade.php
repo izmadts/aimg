@@ -59,6 +59,14 @@
             <p class="text-xs text-gray-500">Total Value</p>
             <p class="text-lg font-bold text-green-600">Rs. {{ number_format($stats['total_value'], 0) }}</p>
         </div>
+        <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-cyan-500">
+            <p class="text-xs text-gray-500">Filled</p>
+            <p class="text-lg font-bold text-cyan-600">{{ $stats['total_filled'] }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-amber-500">
+            <p class="text-xs text-gray-500">Empty</p>
+            <p class="text-lg font-bold text-amber-600">{{ $stats['total_empty'] }}</p>
+        </div>
     </div>
 
     <!-- Search & Filter -->
@@ -113,7 +121,8 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Issued</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Available</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Filled</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Empty</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Value</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -129,9 +138,15 @@
                         <td class="px-6 py-3 text-center font-bold">{{ $cylinder->stock_quantity }}</td>
                         <td class="px-6 py-3 text-center text-yellow-600">{{ $cylinder->issued_quantity }}</td>
                         <td class="px-6 py-3 text-center">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium 
-                                {{ $cylinder->available_quantity > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                {{ $cylinder->available_quantity }}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                                {{ $cylinder->filled_quantity > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                {{ $cylinder->filled_quantity }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-3 text-center">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                                {{ $cylinder->empty_quantity > 0 ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-500' }}">
+                                {{ $cylinder->empty_quantity }}
                             </span>
                         </td>
                         <td class="px-6 py-3 text-center text-sm">Rs. {{ number_format($cylinder->purchase_price * $cylinder->stock_quantity, 0) }}</td>
@@ -165,13 +180,13 @@
                                         </button>
                                     </form>
                                 @endif
-                                @if(in_array($cylinder->status, ['in_house', 'partial_issued']))
+                                @if(in_array($cylinder->status, ['in_house', 'partial_issued']) && $cylinder->filled_quantity > 0)
                                     <button onclick="openIssueModal('{{ $cylinder->id }}', '{{ $cylinder->cylinder_number }}')"
                                             class="text-green-600 hover:text-green-800" title="Issue">
                                         <i class="fas fa-hand-holding"></i>
                                     </button>
                                 @endif
-                                <button onclick="openStockModal({{ $cylinder->id }}, '{{ $cylinder->cylinder_number }}', {{ $cylinder->stock_quantity }})"
+                                <button onclick="openStockModal({{ $cylinder->id }}, '{{ $cylinder->cylinder_number }}', {{ $cylinder->stock_quantity }}, {{ $cylinder->filled_quantity }}, {{ $cylinder->empty_quantity }})"
                                         class="text-teal-600 hover:text-teal-800" title="Update Stock">
                                     <i class="fas fa-boxes"></i>
                                 </button>
@@ -180,7 +195,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="10" class="px-6 py-8 text-center text-gray-500">
+                        <td colspan="11" class="px-6 py-8 text-center text-gray-500">
                             <i class="fas fa-inbox text-3xl mb-2 text-gray-300 block"></i>
                             No cylinders found.
                             <a href="{{ route('cylinders.create') }}" class="text-blue-600 hover:underline ml-1">Add your first cylinder</a>
@@ -265,15 +280,28 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Action *</label>
-                <select name="action" id="stock_action" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <select name="action" id="stock_action" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        onchange="toggleStockActionFields()">
                     <option value="add">➕ Add Stock</option>
                     <option value="remove">➖ Remove Stock</option>
                     <option value="set">📝 Set Exact Stock</option>
                 </select>
             </div>
-            <div>
+            <div id="stock_pool_wrap">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Filled or Empty? *</label>
+                <select name="pool" id="stock_pool" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="filled">Filled (ready to sell/issue)</option>
+                    <option value="empty">Empty (needs a gas transfer first)</option>
+                </select>
+            </div>
+            <div id="stock_quantity_wrap">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Quantity *</label>
-                <input type="number" name="quantity" id="stock_quantity" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <input type="number" name="quantity" id="stock_quantity" min="0" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            </div>
+            <div id="stock_filled_wrap" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">— Of Which, Filled *</label>
+                <input type="number" name="filled_quantity" id="stock_filled_quantity" min="0" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <p class="text-xs text-gray-400 mt-1">The rest count as empty.</p>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
@@ -328,12 +356,16 @@
         .catch(error => alert('❌ Error processing request.'));
     });
 
-    function openStockModal(cylinderId, cylinderNumber, currentStock) {
+    function openStockModal(cylinderId, cylinderNumber, currentStock, filledQuantity, emptyQuantity) {
         document.getElementById('stock_cylinder_id').value = cylinderId;
         document.getElementById('stock_cylinder_number').value = cylinderNumber;
-        document.getElementById('stock_current').value = currentStock + ' pieces';
+        document.getElementById('stock_current').value = currentStock + ' total (' + filledQuantity + ' filled, ' + emptyQuantity + ' empty)';
+        document.getElementById('stock_action').value = 'add';
+        document.getElementById('stock_pool').value = 'filled';
         document.getElementById('stock_quantity').value = '';
+        document.getElementById('stock_filled_quantity').value = filledQuantity;
         document.getElementById('stock_notes').value = '';
+        toggleStockActionFields();
         document.getElementById('stockModal').classList.remove('hidden');
         document.body.classList.add('overflow-hidden');
     }
@@ -341,6 +373,15 @@
     function closeStockModal() {
         document.getElementById('stockModal').classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
+    }
+
+    function toggleStockActionFields() {
+        const action = document.getElementById('stock_action').value;
+        const isSet = action === 'set';
+
+        document.getElementById('stock_pool_wrap').classList.toggle('hidden', isSet);
+        document.getElementById('stock_filled_wrap').classList.toggle('hidden', !isSet);
+        document.querySelector('#stock_quantity_wrap label').textContent = isSet ? 'Total Stock *' : 'Quantity *';
     }
 
     document.getElementById('stockModal').addEventListener('click', function(e) {
@@ -351,11 +392,17 @@
         e.preventDefault();
         const cylinderId = document.getElementById('stock_cylinder_id').value;
         const action = document.getElementById('stock_action').value;
+        const pool = document.getElementById('stock_pool').value;
         const quantity = parseInt(document.getElementById('stock_quantity').value);
+        const filledQuantity = document.getElementById('stock_filled_quantity').value;
         const notes = document.getElementById('stock_notes').value;
 
-        if (!quantity || quantity < 0) {
+        if (isNaN(quantity) || quantity < 0) {
             alert('Please enter a valid quantity.');
+            return;
+        }
+        if (action === 'set' && (filledQuantity === '' || parseInt(filledQuantity) > quantity)) {
+            alert('Filled quantity must be entered and can\'t be more than the total stock.');
             return;
         }
 
@@ -363,6 +410,10 @@
         formData.append('cylinder_id', cylinderId);
         formData.append('action', action);
         formData.append('quantity', quantity);
+        formData.append('pool', pool);
+        if (action === 'set') {
+            formData.append('filled_quantity', filledQuantity);
+        }
         formData.append('notes', notes);
         formData.append('_token', '{{ csrf_token() }}');
 

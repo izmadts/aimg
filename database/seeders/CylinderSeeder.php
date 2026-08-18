@@ -37,6 +37,7 @@ class CylinderSeeder extends Seeder
                         'capacity' => $size['capacity'],
                         'stock_quantity' => 20,
                         'issued_quantity' => 0,
+                        'filled_quantity' => 20,
                         'status' => 'in_house',
                         'purchase_price' => $size['purchase_price'],
                         'sale_price' => $size['sale_price'],

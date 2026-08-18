@@ -36,7 +36,7 @@ class DashboardController extends Controller
             'total_suppliers' => Supplier::where('is_active', true)->count(),
             'total_cylinders' => Cylinder::sum('stock_quantity'),
             'issued_cylinders' => Cylinder::sum('issued_quantity'),
-            'available_cylinders' => Cylinder::whereIn('status', ['in_house', 'partial_issued'])->sum(DB::raw('stock_quantity - issued_quantity')),
+            'available_cylinders' => Cylinder::whereIn('status', ['in_house', 'partial_issued'])->sum('filled_quantity'),
 
             'today_sales' => Sale::whereDate('date', $today)->where('status', '!=', 'cancelled')->sum('grand_total'),
             'today_sales_count' => Sale::whereDate('date', $today)->where('status', '!=', 'cancelled')->count(),

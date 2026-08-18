@@ -18,6 +18,7 @@ class Cylinder extends Model
         'capacity',
         'stock_quantity',
         'issued_quantity',
+        'filled_quantity',
         'purchase_price',
         'sale_price',
         'status',
@@ -32,6 +33,7 @@ class Cylinder extends Model
         'capacity' => 'decimal:2',
         'stock_quantity' => 'integer',
         'issued_quantity' => 'integer',
+        'filled_quantity' => 'integer',
         'purchase_price' => 'decimal:2',
         'sale_price' => 'decimal:2',
     ];
@@ -71,7 +73,7 @@ class Cylinder extends Model
 
     public function scopeAvailable($query)
     {
-        return $query->whereColumn('stock_quantity', '>', 'issued_quantity');
+        return $query->where('filled_quantity', '>', 0);
     }
 
     public function scopeInStock($query)
@@ -129,9 +131,24 @@ class Cylinder extends Model
         return $colors[$this->status] ?? 'gray';
     }
 
+    /**
+     * "Available" means ready to hand to a customer right now — i.e. filled.
+     * Empty units in the warehouse aren't sellable until a Gas Transfer fills
+     * them, so they're deliberately excluded here.
+     */
     public function getAvailableQuantityAttribute()
     {
-        return $this->stock_quantity - ($this->issued_quantity ?? 0);
+        return (int) $this->filled_quantity;
+    }
+
+    /**
+     * In the warehouse, not issued, but not yet filled with gas.
+     * Not a stored column on purpose — always derived so it can never drift
+     * out of sync with stock/issued/filled.
+     */
+    public function getEmptyQuantityAttribute()
+    {
+        return max(0, $this->stock_quantity - ($this->issued_quantity ?? 0) - ($this->filled_quantity ?? 0));
     }
 
     public function getTotalAssetValueAttribute()
@@ -310,20 +327,29 @@ class Cylinder extends Model
         return $this;
     }
 
-    public function addStock($quantity)
+    public function addStock($quantity, $pool = 'filled')
     {
         $this->increment('stock_quantity', $quantity);
+        if ($pool === 'filled') {
+            $this->increment('filled_quantity', $quantity);
+        }
         $this->updateStatus();
         return $this;
     }
 
-    public function removeStock($quantity)
+    public function removeStock($quantity, $pool = 'filled')
     {
         $locked = static::whereKey($this->id)->lockForUpdate()->first();
-        if ($locked->available_quantity < $quantity) {
-            throw new \Exception('Insufficient stock. Available: ' . $locked->available_quantity);
+        $poolQuantity = $pool === 'filled' ? $locked->filled_quantity : $locked->empty_quantity;
+
+        if ($poolQuantity < $quantity) {
+            throw new \Exception("Insufficient {$pool} stock. Available: " . $poolQuantity);
         }
+
         $this->decrement('stock_quantity', $quantity);
+        if ($pool === 'filled') {
+            $this->decrement('filled_quantity', $quantity);
+        }
         $this->updateStatus();
         return $this;
     }
@@ -346,6 +372,7 @@ class Cylinder extends Model
         ]);
 
         $this->increment('issued_quantity', $quantity);
+        $this->decrement('filled_quantity', $quantity);
         $this->updateStatus();
 
         $this->transactions()->create([
@@ -416,6 +443,7 @@ class Cylinder extends Model
         }
 
         $this->decrement('stock_quantity', $quantity);
+        $this->decrement('filled_quantity', $quantity);
         $this->updateStatus();
 
         $this->transactions()->create([

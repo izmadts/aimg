@@ -63,6 +63,8 @@ class CylinderController extends Controller
             'total_issued' => Cylinder::sum('issued_quantity'),
             'total_value' => Cylinder::sum(DB::raw('purchase_price * stock_quantity')),
         ];
+        $stats['total_filled'] = Cylinder::sum('filled_quantity');
+        $stats['total_empty'] = max(0, $stats['total_stock'] - $stats['total_issued'] - $stats['total_filled']);
 
         $gasProducts = GasProduct::where('is_active', true)->get();
         $customers = Customer::where('is_active', true)->get();
@@ -208,28 +210,37 @@ class CylinderController extends Controller
             'cylinder_id' => 'required|exists:cylinders,id',
             'action' => 'required|in:add,remove,set',
             'quantity' => 'required|integer|min:0',
+            'pool' => 'nullable|in:filled,empty',
+            'filled_quantity' => 'required_if:action,set|nullable|integer|min:0',
             'notes' => 'nullable|string|max:500'
         ]);
 
         $cylinder = Cylinder::find($request->cylinder_id);
+        $pool = $request->input('pool', 'filled');
 
         try {
             switch ($request->action) {
                 case 'add':
-                    $cylinder->addStock($request->quantity);
-                    $message = "Added {$request->quantity} pieces to stock.";
+                    $cylinder->addStock($request->quantity, $pool);
+                    $message = "Added {$request->quantity} {$pool} pieces to stock.";
                     break;
                 case 'remove':
-                    $cylinder->removeStock($request->quantity);
-                    $message = "Removed {$request->quantity} pieces from stock.";
+                    $cylinder->removeStock($request->quantity, $pool);
+                    $message = "Removed {$request->quantity} {$pool} pieces from stock.";
                     break;
                 case 'set':
                     if ($request->quantity < $cylinder->issued_quantity) {
                         throw new \Exception("Cannot set stock below the {$cylinder->issued_quantity} pieces currently issued.");
                     }
-                    $cylinder->update(['stock_quantity' => $request->quantity]);
+                    if ($request->filled_quantity > $request->quantity) {
+                        throw new \Exception('Filled quantity can\'t be more than the total stock.');
+                    }
+                    $cylinder->update([
+                        'stock_quantity' => $request->quantity,
+                        'filled_quantity' => $request->filled_quantity,
+                    ]);
                     $cylinder->updateStatus();
-                    $message = "Set stock to {$request->quantity} pieces.";
+                    $message = "Set stock to {$request->quantity} pieces ({$request->filled_quantity} filled).";
                     break;
                 default:
                     throw new \Exception('Invalid stock action.');
@@ -240,6 +251,8 @@ class CylinderController extends Controller
                 'message' => $message,
                 'stock_quantity' => $cylinder->stock_quantity,
                 'issued_quantity' => $cylinder->issued_quantity,
+                'filled_quantity' => $cylinder->filled_quantity,
+                'empty_quantity' => $cylinder->empty_quantity,
                 'available_quantity' => $cylinder->available_quantity,
                 'status' => $cylinder->status,
                 'status_label' => $cylinder->status_label
@@ -287,13 +300,14 @@ class CylinderController extends Controller
             'gas_product_id' => 'required|exists:gas_products,id',
             'cylinder_id' => 'required|exists:cylinders,id',
             'gas_quantity' => 'required|numeric|min:0.01',
-            'cylinder_quantity' => 'nullable|integer|min:1',
+            'cylinder_quantity' => 'required|integer|min:1',
             'transfer_date' => 'nullable|date',
             'notes' => 'nullable|string|max:500',
         ]);
 
         $gasProduct = GasProduct::lockForUpdate()->findOrFail($validated['gas_product_id']);
-        $cylinder = Cylinder::findOrFail($validated['cylinder_id']);
+        $cylinder = Cylinder::whereKey($validated['cylinder_id'])->lockForUpdate()->firstOrFail();
+        $cylinderQuantity = (int) $validated['cylinder_quantity'];
 
         if ($cylinder->gas_product_id !== $gasProduct->id) {
             return redirect()->back()->withInput()
@@ -305,18 +319,17 @@ class CylinderController extends Controller
                 ->with('error', "Not enough {$gasProduct->name} in the bulk/bowser stock. Available: {$gasProduct->current_stock} {$gasProduct->uom}.");
         }
 
-        $cylinderQuantity = $validated['cylinder_quantity'] ?? null;
-        if ($cylinderQuantity && $cylinderQuantity > $cylinder->available_quantity) {
+        if ($cylinderQuantity > $cylinder->empty_quantity) {
             return redirect()->back()->withInput()
-                ->with('error', "Only {$cylinder->available_quantity} {$cylinder->type} cylinder(s) are free to fill (the rest are already issued).");
+                ->with('error', "Only {$cylinder->empty_quantity} {$cylinder->type} cylinder(s) are empty and waiting to be filled (the rest are already filled or issued).");
         }
 
         DB::transaction(function () use ($gasProduct, $cylinder, $validated, $cylinderQuantity) {
             $gasProduct->decrement('current_stock', $validated['gas_quantity']);
+            $cylinder->increment('filled_quantity', $cylinderQuantity);
+            $cylinder->updateStatus();
 
-            $remarks = $cylinderQuantity
-                ? "Filled {$cylinderQuantity} x {$cylinder->type} cylinder(s) with {$validated['gas_quantity']} {$gasProduct->uom} of {$gasProduct->name} from bulk/bowser stock"
-                : "Transferred {$validated['gas_quantity']} {$gasProduct->uom} of {$gasProduct->name} into {$cylinder->type} cylinders from bulk/bowser stock";
+            $remarks = "Filled {$cylinderQuantity} x {$cylinder->type} cylinder(s) with {$validated['gas_quantity']} {$gasProduct->uom} of {$gasProduct->name} from bulk/bowser stock";
 
             if (! empty($validated['notes'])) {
                 $remarks .= " — {$validated['notes']}";
@@ -332,7 +345,7 @@ class CylinderController extends Controller
         });
 
         return redirect()->route('cylinders.transfers')
-            ->with('success', "Transferred {$validated['gas_quantity']} {$gasProduct->uom} of {$gasProduct->name} into {$cylinder->type} cylinders. Remaining bulk stock: {$gasProduct->fresh()->current_stock} {$gasProduct->uom}.");
+            ->with('success', "Filled {$cylinderQuantity} {$cylinder->type} cylinder(s) using {$validated['gas_quantity']} {$gasProduct->uom} of {$gasProduct->name}. Remaining bulk stock: {$gasProduct->fresh()->current_stock} {$gasProduct->uom}.");
     }
 
     // ============================================
@@ -419,7 +432,7 @@ class CylinderController extends Controller
     // ============================================
     public function available(Request $request)
     {
-        $cylinders = Cylinder::whereColumn('stock_quantity', '>', 'issued_quantity')
+        $cylinders = Cylinder::where('filled_quantity', '>', 0)
             ->with('gasProduct')
             ->when($request->filled('gas_product_id'), function ($q) use ($request) {
                 return $q->where('gas_product_id', $request->gas_product_id);
@@ -433,6 +446,8 @@ class CylinderController extends Controller
                     'type' => $cylinder->type,
                     'stock_quantity' => $cylinder->stock_quantity,
                     'issued_quantity' => $cylinder->issued_quantity,
+                    'filled_quantity' => $cylinder->filled_quantity,
+                    'empty_quantity' => $cylinder->empty_quantity,
                     'available_quantity' => $cylinder->available_quantity,
                     'sale_price' => $cylinder->sale_price,
                     'purchase_price' => $cylinder->purchase_price,
@@ -486,7 +501,7 @@ class CylinderController extends Controller
             $file = fopen('php://output', 'w');
             fputcsv($file, [
                 'Cylinder #', 'Gas', 'Type', 'Stock', 'Issued',
-                'Available', 'Purchase Price', 'Sale Price', 'Status', 'Supplier'
+                'Filled', 'Empty', 'Purchase Price', 'Sale Price', 'Status', 'Supplier'
             ]);
 
             foreach ($cylinders as $cylinder) {
@@ -496,7 +511,8 @@ class CylinderController extends Controller
                     $cylinder->type,
                     $cylinder->stock_quantity,
                     $cylinder->issued_quantity,
-                    $cylinder->available_quantity,
+                    $cylinder->filled_quantity,
+                    $cylinder->empty_quantity,
                     $cylinder->purchase_price,
                     $cylinder->sale_price,
                     $cylinder->status_label,

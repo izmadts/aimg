@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreCylinderRequest extends FormRequest
 {
@@ -24,6 +25,7 @@ class StoreCylinderRequest extends FormRequest
             'tare_weight' => 'required|numeric|min:0.01',
             'capacity' => 'required|numeric|min:0.01',
             'stock_quantity' => 'required|integer|min:0',
+            'filled_quantity' => 'required|integer|min:0',
             'purchase_price' => 'required|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0|gte:purchase_price',
             'supplier_id' => 'nullable|exists:suppliers,id',
@@ -37,5 +39,17 @@ class StoreCylinderRequest extends FormRequest
         return [
             'sale_price.gte' => 'Sale price must be greater than or equal to the purchase price.',
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $stock = (int) $this->input('stock_quantity');
+            $filled = (int) $this->input('filled_quantity');
+
+            if ($filled > $stock) {
+                $validator->errors()->add('filled_quantity', 'Filled quantity can\'t be more than the total stock quantity.');
+            }
+        });
     }
 }

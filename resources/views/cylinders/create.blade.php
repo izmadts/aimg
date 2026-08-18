@@ -105,10 +105,20 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Stock Quantity *</label>
-                    <input type="number" name="stock_quantity" id="stock_quantity" value="{{ old('stock_quantity', 1) }}" required
+                    <input type="number" name="stock_quantity" id="stock_quantity" value="{{ old('stock_quantity', 1) }}" required min="0"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                           oninput="calculatePrices()">
+                           oninput="calculatePrices(); syncFilledMax()">
                     @error('stock_quantity')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">— Of Which, Filled *</label>
+                    <input type="number" name="filled_quantity" id="filled_quantity" value="{{ old('filled_quantity', 1) }}" required min="0"
+                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <p class="text-xs text-gray-400 mt-1">The rest are counted as empty, waiting to be filled.</p>
+                    @error('filled_quantity')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
@@ -257,11 +267,23 @@
         document.getElementById('totalProfit').textContent = 'Rs. ' + totalProfit.toFixed(2);
     }
 
+    function syncFilledMax() {
+        const stockInput = document.getElementById('stock_quantity');
+        const filledInput = document.getElementById('filled_quantity');
+        const stock = parseInt(stockInput.value) || 0;
+
+        filledInput.max = stock;
+        if (parseInt(filledInput.value) > stock) {
+            filledInput.value = stock;
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         // Only recompute the read-only margin/totals here — don't call
         // autoDetectPrice() on load, or it would silently overwrite whatever
         // the user already typed (e.g. after a validation error redisplay).
         calculatePrices();
+        syncFilledMax();
     });
 </script>
 @endpush

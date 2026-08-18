@@ -120,8 +120,12 @@
                         <span class="font-bold text-yellow-600">{{ $cylinder->issued_quantity }}</span>
                     </div>
                     <div class="flex justify-between border-t pt-2">
-                        <span class="text-gray-500">Available</span>
-                        <span class="font-bold text-green-600">{{ $cylinder->available_quantity }}</span>
+                        <span class="text-gray-500">Filled (available)</span>
+                        <span class="font-bold text-green-600">{{ $cylinder->filled_quantity }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Empty</span>
+                        <span class="font-bold text-amber-600">{{ $cylinder->empty_quantity }}</span>
                     </div>
                 </div>
             </div>

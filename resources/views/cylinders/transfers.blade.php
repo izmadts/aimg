@@ -163,7 +163,8 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Type (being filled) *</label>
                 <select name="cylinder_id" id="transfer_cylinder_id" required
-                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        onchange="syncCylinderQuantityMax()">
                     <option value="">Select gas product first</option>
                 </select>
                 <p class="text-xs text-gray-400 mt-1" id="transfer_cylinder_hint"></p>
@@ -175,9 +176,8 @@
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinders Filled</label>
-                    <input type="number" step="1" min="1" name="cylinder_quantity" id="transfer_cylinder_quantity"
-                           placeholder="Optional"
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinders Filled *</label>
+                    <input type="number" step="1" min="1" name="cylinder_quantity" id="transfer_cylinder_quantity" required
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>
             </div>
@@ -191,8 +191,8 @@
                 <textarea name="notes" rows="2" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
             </div>
             <p class="text-xs text-gray-400">
-                This reduces your bulk/bowser gas stock and records which cylinder size received it. It does not change how
-                many cylinders you own — only which ones are now filled.
+                This reduces your bulk/bowser gas stock and moves that many cylinders from Empty to Filled for the
+                selected type. It does not change how many cylinders you own overall.
             </p>
             <div class="flex justify-end space-x-3 pt-4 border-t">
                 <button type="button" onclick="closeTransferModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg transition">Cancel</button>
@@ -207,12 +207,13 @@
 @php
     $transferCylindersJson = $cylinders->map(function ($c) {
         $label = $c->cylinder_number . ' — ' . $c->type
-            . ' (' . $c->available_quantity . ' free of ' . $c->stock_quantity . ' owned)';
+            . ' (' . $c->empty_quantity . ' empty, ' . $c->filled_quantity . ' filled)';
 
         return [
             'id' => $c->id,
             'label' => $label,
             'gas_product_id' => $c->gas_product_id,
+            'empty_quantity' => $c->empty_quantity,
         ];
     });
 @endphp
@@ -244,8 +245,21 @@
         }
 
         cylinderSelect.innerHTML = '<option value="">Select cylinder type</option>' +
-            matches.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
+            matches.map(c => `<option value="${c.id}" data-empty="${c.empty_quantity}">${c.label}</option>`).join('');
         hint.textContent = '';
+        syncCylinderQuantityMax();
+    }
+
+    function syncCylinderQuantityMax() {
+        const cylinderSelect = document.getElementById('transfer_cylinder_id');
+        const qtyInput = document.getElementById('transfer_cylinder_quantity');
+        const selected = cylinderSelect.options[cylinderSelect.selectedIndex];
+        const empty = selected ? parseInt(selected.dataset.empty) || 0 : 0;
+
+        qtyInput.max = empty;
+        if (parseInt(qtyInput.value) > empty) {
+            qtyInput.value = empty || '';
+        }
     }
 
     function openTransferModal() {
