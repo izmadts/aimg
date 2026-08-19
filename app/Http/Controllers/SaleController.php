@@ -31,6 +31,7 @@ class SaleController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('invoice_no', 'LIKE', "%{$search}%")
+                  ->orWhere('ecr_number', 'LIKE', "%{$search}%")
                   ->orWhereHas('customer', function ($sq) use ($search) {
                       $sq->where('name', 'LIKE', "%{$search}%")
                          ->orWhere('phone', 'LIKE', "%{$search}%");
@@ -73,8 +74,10 @@ class SaleController extends Controller
         $customers = Customer::where('is_active', true)->get();
         $gasProducts = GasProduct::where('is_active', true)->where('current_stock', '>', 0)->get();
 
-        $availableCylinders = Cylinder::where('filled_quantity', '>', 0)
-            ->with('gasProduct')
+        // All cylinder types, not just filled ones: a "Return (from customer)" line
+        // doesn't need filled stock. The dropdown shows each type's filled count so
+        // staff can see at a glance which ones are actually available to issue/sell.
+        $availableCylinders = Cylinder::with('gasProduct')
             ->get()
             ->map(function ($cylinder) {
                 return [
@@ -100,6 +103,7 @@ class SaleController extends Controller
         $sale = DB::transaction(function () use ($validated) {
             $sale = Sale::create([
                 'customer_id' => $validated['customer_id'],
+                'ecr_number' => $validated['ecr_number'] ?? null,
                 'date' => $validated['date'],
                 'delivery_date' => $validated['delivery_date'] ?? null,
                 'discount' => $validated['discount'] ?? 0,
@@ -118,6 +122,14 @@ class SaleController extends Controller
             $sale->updatePaymentStatus();
 
             $this->accountingService->recordSale($sale);
+
+            // Cylinders returned within this same invoice may carry a refund —
+            // post it the same way the standalone returnCylinder() endpoint does.
+            foreach ($sale->items as $item) {
+                if ($item->cylinder_action === 'return' && $item->cylinder_total > 0) {
+                    $this->accountingService->recordDepositRefund($sale, (float) $item->cylinder_total);
+                }
+            }
 
             return $sale;
         });
@@ -160,8 +172,12 @@ class SaleController extends Controller
 
             if ($itemData['cylinder_action'] === 'issue') {
                 $cylinder->issueToCustomer($sale->customer_id, $quantity, $lineTotal, $sale->invoice_no);
-            } else {
+            } elseif ($itemData['cylinder_action'] === 'sell') {
                 $cylinder->sellToCustomer($sale->customer_id, $quantity, $sale->invoice_no);
+            } else {
+                // return: refund (if any) is posted separately in store(), after
+                // the sale's own accounting entry, since it's a distinct posting.
+                $cylinder->returnFromCustomer($sale->customer_id, $quantity, 0, $lineTotal, $sale->invoice_no);
             }
 
             $fields['cylinder_id'] = $itemData['cylinder_id'];
@@ -204,9 +220,7 @@ class SaleController extends Controller
 
         $customers = Customer::where('is_active', true)->get();
         $gasProducts = GasProduct::where('is_active', true)->get();
-        $availableCylinders = Cylinder::where('filled_quantity', '>', 0)
-            ->with('gasProduct')
-            ->get();
+        $availableCylinders = Cylinder::with('gasProduct')->get();
 
         return view('sales.edit', compact('sale', 'customers', 'gasProducts', 'availableCylinders'));
     }
@@ -245,6 +259,9 @@ class SaleController extends Controller
                     if ($cylinder) {
                         if ($item->cylinder_action === 'issue') {
                             $cylinder->decrement('issued_quantity', $item->cylinder_quantity);
+                        } elseif ($item->cylinder_action === 'return') {
+                            // Undo the return: back with the customer, out of our empty pool.
+                            $cylinder->increment('issued_quantity', $item->cylinder_quantity);
                         } else {
                             $cylinder->increment('stock_quantity', $item->cylinder_quantity);
                         }

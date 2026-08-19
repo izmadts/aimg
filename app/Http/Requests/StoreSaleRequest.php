@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Customer;
 use App\Models\Cylinder;
 use App\Models\GasProduct;
 use Illuminate\Foundation\Http\FormRequest;
@@ -18,6 +19,7 @@ class StoreSaleRequest extends FormRequest
     {
         return [
             'customer_id' => 'required|exists:customers,id',
+            'ecr_number' => 'nullable|string|max:50|unique:sales,ecr_number',
             'date' => 'required|date',
             'delivery_date' => 'nullable|date|after_or_equal:date',
             'payment_method' => 'required|in:cash,bank_transfer,cheque,online,credit',
@@ -31,7 +33,7 @@ class StoreSaleRequest extends FormRequest
             'items.*.gas_quantity' => 'nullable|numeric|min:0.01',
             'items.*.gas_price' => 'nullable|numeric|min:0',
             'items.*.cylinder_id' => 'nullable|exists:cylinders,id',
-            'items.*.cylinder_action' => 'nullable|in:issue,sell',
+            'items.*.cylinder_action' => 'nullable|in:issue,sell,return',
             'items.*.cylinder_quantity' => 'nullable|integer|min:1',
             'items.*.cylinder_unit_price' => 'nullable|numeric|min:0',
             'items.*.is_customer_cylinder' => 'nullable|boolean',
@@ -42,11 +44,14 @@ class StoreSaleRequest extends FormRequest
     {
         $validator->after(function (Validator $validator) {
             $items = $this->input('items', []);
+            $customerId = $this->input('customer_id');
             $gasDemand = [];
             $cylinderDemand = [];
+            $returnDemand = [];
             $subtotal = 0;
             $depositTotal = 0;
             $cylinderSaleTotal = 0;
+            $returnRefundTotal = 0;
 
             foreach ($items as $index => $item) {
                 $hasGas = !empty($item['gas_product_id']);
@@ -77,12 +82,16 @@ class StoreSaleRequest extends FormRequest
                         if ($item['cylinder_action'] === 'sell' && empty($item['cylinder_unit_price'])) {
                             $validator->errors()->add("items.$index.cylinder_unit_price", 'Sale price is required when selling a cylinder.');
                         }
-                        $cylinderDemand[$item['cylinder_id']] = ($cylinderDemand[$item['cylinder_id']] ?? 0) + $item['cylinder_quantity'];
                         $lineTotal = $item['cylinder_quantity'] * ($item['cylinder_unit_price'] ?? 0);
                         if ($item['cylinder_action'] === 'issue') {
+                            $cylinderDemand[$item['cylinder_id']] = ($cylinderDemand[$item['cylinder_id']] ?? 0) + $item['cylinder_quantity'];
                             $depositTotal += $lineTotal;
-                        } else {
+                        } elseif ($item['cylinder_action'] === 'sell') {
+                            $cylinderDemand[$item['cylinder_id']] = ($cylinderDemand[$item['cylinder_id']] ?? 0) + $item['cylinder_quantity'];
                             $cylinderSaleTotal += $lineTotal;
+                        } elseif ($item['cylinder_action'] === 'return') {
+                            $returnDemand[$item['cylinder_id']] = ($returnDemand[$item['cylinder_id']] ?? 0) + $item['cylinder_quantity'];
+                            $returnRefundTotal += $lineTotal;
                         }
                     }
                 }
@@ -102,8 +111,23 @@ class StoreSaleRequest extends FormRequest
                 }
             }
 
+            if ($customerId) {
+                $customer = Customer::find($customerId);
+                foreach ($returnDemand as $cylinderId => $quantity) {
+                    $held = $customer
+                        ? $customer->activeCylinderIssues()->where('cylinder_id', $cylinderId)->sum('quantity')
+                        : 0;
+                    if ($quantity > $held) {
+                        $cylinder = Cylinder::find($cylinderId);
+                        $validator->errors()->add('items', "Cannot return {$quantity} of {$cylinder->cylinder_number} — this customer only holds {$held}.");
+                    }
+                }
+            }
+
             $discount = (float) $this->input('discount', 0);
             $tax = (float) $this->input('tax', 0);
+            // Return refunds are a separate cash-out event, not netted into what the
+            // customer owes on this invoice — see Sale::calculateTotals().
             $grandTotal = $subtotal + $depositTotal + $cylinderSaleTotal - $discount + $tax;
             $amountPaid = (float) $this->input('amount_paid', 0);
 

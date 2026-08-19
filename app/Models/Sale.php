@@ -11,12 +11,14 @@ class Sale extends Model
 
     protected $fillable = [
         'invoice_no',
+        'ecr_number',
         'customer_id',
         'date',
         'delivery_date',
         'subtotal',
         'cylinder_deposit_total',
         'cylinder_sale_total',
+        'cylinder_return_refund_total',
         'discount',
         'tax',
         'grand_total',
@@ -35,6 +37,7 @@ class Sale extends Model
         'subtotal' => 'decimal:2',
         'cylinder_deposit_total' => 'decimal:2',
         'cylinder_sale_total' => 'decimal:2',
+        'cylinder_return_refund_total' => 'decimal:2',
         'discount' => 'decimal:2',
         'tax' => 'decimal:2',
         'grand_total' => 'decimal:2',
@@ -153,6 +156,11 @@ class Sale extends Model
         $this->subtotal = $items->sum('gas_total');
         $this->cylinder_deposit_total = $items->where('cylinder_action', 'issue')->sum('cylinder_total');
         $this->cylinder_sale_total = $items->where('cylinder_action', 'sell')->sum('cylinder_total');
+        // Tracked/displayed separately, but NOT netted into grand_total: the refund
+        // is a distinct cash-out event with its own accounting posting
+        // (AccountingService::recordDepositRefund(), called from SaleController::store()),
+        // not part of what the customer owes on this invoice.
+        $this->cylinder_return_refund_total = $items->where('cylinder_action', 'return')->sum('cylinder_total');
         $this->grand_total = $this->subtotal + $this->cylinder_deposit_total + $this->cylinder_sale_total - $this->discount + $this->tax;
         $this->balance_due = $this->grand_total - $this->amount_paid;
         $this->save();

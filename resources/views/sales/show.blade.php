@@ -9,7 +9,7 @@
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Sale Invoice</h1>
-            <p class="text-sm text-gray-500">#{{ $sale->invoice_no }}</p>
+            <p class="text-sm text-gray-500">#{{ $sale->invoice_no }}@if($sale->ecr_number) &nbsp;·&nbsp; ECR #{{ $sale->ecr_number }}@endif</p>
         </div>
         <div class="flex flex-wrap gap-2">
             <a href="{{ route('sales.print', $sale) }}" target="_blank" class="bg-gray-600 hover:bg-gray-700 text-white font-medium px-4 py-2 rounded-lg transition">
@@ -50,6 +50,10 @@
                     <div>
                         <p class="text-xs text-gray-500">Invoice #</p>
                         <p class="font-semibold">{{ $sale->invoice_no }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">ECR # (Khata book)</p>
+                        <p class="font-semibold">{{ $sale->ecr_number ?? '—' }}</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-500">Date</p>
@@ -177,6 +181,12 @@
                             Rs. {{ number_format($sale->balance_due, 2) }}
                         </span>
                     </div>
+                    @if($sale->cylinder_return_refund_total > 0)
+                    <div class="flex justify-between border-t border-gray-200 pt-2">
+                        <span class="text-xs text-gray-500">Also refunded on this invoice<br>(cylinder returns — paid out separately, not part of the total above)</span>
+                        <span class="text-sm font-semibold text-red-600 whitespace-nowrap">Rs. {{ number_format($sale->cylinder_return_refund_total, 2) }}</span>
+                    </div>
+                    @endif
                 </div>
             </div>
 

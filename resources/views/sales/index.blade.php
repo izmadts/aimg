@@ -102,6 +102,9 @@
                             <a href="{{ route('sales.show', $sale) }}" class="text-blue-600 hover:underline">
                                 {{ $sale->invoice_no }}
                             </a>
+                            @if($sale->ecr_number)
+                                <p class="text-xs text-gray-400">ECR #{{ $sale->ecr_number }}</p>
+                            @endif
                         </td>
                         <td class="px-6 py-3 text-sm">{{ $sale->customer->name ?? 'N/A' }}</td>
                         <td class="px-6 py-3 text-sm">{{ $sale->date->format('d-m-Y') }}</td>

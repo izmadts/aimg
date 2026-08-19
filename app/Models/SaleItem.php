@@ -69,6 +69,7 @@ class SaleItem extends Model
         $labels = [
             'issue' => 'Issued (deposit)',
             'sell' => 'Sold',
+            'return' => 'Returned by customer',
         ];
         return $labels[$this->cylinder_action] ?? '—';
     }

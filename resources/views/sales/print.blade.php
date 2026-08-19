@@ -325,6 +325,9 @@
             <div class="invoice-title">
                 <h2>SALE INVOICE</h2>
                 <p class="invoice-no">#{{ $sale->invoice_no }}</p>
+                @if($sale->ecr_number)
+                    <p class="invoice-no">ECR #{{ $sale->ecr_number }}</p>
+                @endif
                 <div style="margin-top: 8px;">
                     <span class="badge-print {{ $sale->status }}">
                         {{ ucfirst($sale->status) }}
@@ -448,6 +451,12 @@
                     <td class="amount" style="color: #d97706;">Rs. {{ number_format($sale->cylinder_deposit_total, 2) }}</td>
                 </tr>
                 @endif
+                @if($sale->cylinder_sale_total > 0)
+                <tr>
+                    <td class="label">Cylinder Sale</td>
+                    <td class="amount" style="color: #2563eb;">Rs. {{ number_format($sale->cylinder_sale_total, 2) }}</td>
+                </tr>
+                @endif
                 @if($sale->discount > 0)
                 <tr>
                     <td class="label" style="color: #dc2626;">Discount</td>
@@ -472,6 +481,12 @@
                 <tr>
                     <td class="label" style="color: #dc2626; font-weight: 700;">Balance Due</td>
                     <td class="amount" style="color: #dc2626; font-weight: 700;">Rs. {{ number_format($sale->balance_due, 2) }}</td>
+                </tr>
+                @endif
+                @if($sale->cylinder_return_refund_total > 0)
+                <tr>
+                    <td class="label" style="color: #dc2626;">Refunded for returned cylinders (paid separately)</td>
+                    <td class="amount" style="color: #dc2626;">Rs. {{ number_format($sale->cylinder_return_refund_total, 2) }}</td>
                 </tr>
                 @endif
             </table>

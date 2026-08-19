@@ -36,7 +36,7 @@
              CUSTOMER & INVOICE DETAILS
              ============================================ -->
         <div class="bg-white rounded-lg shadow p-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Customer *</label>
                     <select name="customer_id" id="customer_id" required
@@ -70,6 +70,15 @@
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">ECR # (Khata book)</label>
+                    <input type="text" name="ecr_number" value="{{ old('ecr_number') }}" placeholder="e.g. 4521"
+                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <p class="text-xs text-gray-400 mt-1">Your physical receipt book number. Optional — leave blank to use the system invoice number only.</p>
+                    @error('ecr_number')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
             </div>
         </div>
 
@@ -98,7 +107,7 @@
             <div class="flex justify-between items-center mb-4">
                 <div>
                     <h3 class="text-lg font-semibold">📋 Line Items</h3>
-                    <p class="text-xs text-gray-400">Each line can carry gas, a cylinder, or both.</p>
+                    <p class="text-xs text-gray-400">Each line can carry gas, a cylinder, or both. To handle a customer returning empties and taking new filled ones in the same invoice, add one line per cylinder type/size with the right Action (Return / Issue / Sell).</p>
                 </div>
                 <button type="button" onclick="addItem()"
                         class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition">
@@ -119,7 +128,7 @@
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-lg font-semibold mb-4">💰 Financial Summary</h3>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Gas Subtotal</label>
                     <input type="text" id="subtotalDisplay" readonly
@@ -134,6 +143,11 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Sale Total</label>
                     <input type="text" id="cylinderSaleTotalDisplay" readonly
                            class="w-full rounded-lg bg-blue-50 border-blue-200 shadow-sm font-semibold text-blue-700">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Refund for Returns (paid separately)</label>
+                    <input type="text" id="returnRefundTotalDisplay" readonly
+                           class="w-full rounded-lg bg-red-50 border-red-200 shadow-sm font-semibold text-red-700">
                 </div>
             </div>
 
@@ -275,7 +289,7 @@
                     <p class="text-xs font-semibold text-blue-700 mb-2 uppercase">🧪 Gas (optional)</p>
                     <select name="items[${n}][gas_product_id]" id="gas_product_${n}"
                             class="w-full rounded-lg border-gray-300 shadow-sm text-sm mb-2"
-                            onchange="autoFillGasPrice(${n}); toggleCustomerCylinderFlag(${n})">
+                            onchange="autoFillGasPrice(${n}); toggleCustomerCylinderFlag(${n}); updateGasConversion(${n})">
                         <option value="">— No gas on this line —</option>
                         ${gasOptions}
                     </select>
@@ -283,7 +297,7 @@
                         <div>
                             <label class="block text-xs text-gray-500 mb-0.5">Quantity</label>
                             <input type="number" step="0.01" min="0.01" name="items[${n}][gas_quantity]" id="gas_qty_${n}"
-                                   class="w-full rounded-lg border-gray-300 shadow-sm text-sm" oninput="calculateTotals()">
+                                   class="w-full rounded-lg border-gray-300 shadow-sm text-sm" oninput="calculateTotals(); updateGasConversion(${n})">
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500 mb-0.5">Price / Unit</label>
@@ -291,6 +305,7 @@
                                    class="w-full rounded-lg border-gray-300 shadow-sm text-sm" oninput="calculateTotals()">
                         </div>
                     </div>
+                    <p class="text-xs text-blue-600 mt-1" id="gas_conversion_${n}"></p>
                     <div class="text-right text-sm mt-2">
                         <span class="text-gray-500">Gas Total:</span>
                         <span class="font-semibold text-blue-700" id="gas_total_${n}">Rs. 0.00</span>
@@ -320,6 +335,7 @@
                                     class="w-full rounded-lg border-gray-300 shadow-sm text-sm" onchange="autoFillCylinderPrice(${n})">
                                 <option value="issue">Issue (deposit)</option>
                                 <option value="sell">Sell</option>
+                                <option value="return">Return (from customer)</option>
                             </select>
                         </div>
                         <div>
@@ -393,6 +409,35 @@
         calculateTotals();
     }
 
+    // ============================================
+    // GAS QUANTITY UNIT CONVERSION (KG <-> Cubic Meter)
+    // ============================================
+    function updateGasConversion(n) {
+        const select = document.getElementById('gas_product_' + n);
+        const qty = parseFloat(document.getElementById('gas_qty_' + n)?.value) || 0;
+        const hint = document.getElementById('gas_conversion_' + n);
+        if (!hint) return;
+
+        const productId = select.value;
+        const product = gasProducts.find(p => String(p.id) === String(productId));
+
+        if (!product || !qty || !product.density_kg_per_m3) {
+            hint.textContent = '';
+            return;
+        }
+
+        const uom = (product.uom || '').toLowerCase();
+        const density = parseFloat(product.density_kg_per_m3);
+
+        if (uom.includes('cubic meter')) {
+            hint.textContent = `≈ ${(qty * density).toFixed(2)} kg`;
+        } else if (uom.includes('kg') || uom.includes('kilogram')) {
+            hint.textContent = `≈ ${(qty / density).toFixed(2)} m³`;
+        } else {
+            hint.textContent = '';
+        }
+    }
+
     function autoFillCylinderPrice(n) {
         const select = document.getElementById('cylinder_' + n);
         const actionSelect = document.getElementById('cylinder_action_' + n);
@@ -401,12 +446,15 @@
         const label = document.getElementById('cylinder_price_label_' + n);
         const selectedOption = select.options[select.selectedIndex];
 
-        label.textContent = actionSelect.value === 'sell' ? 'Sale Price / Unit' : 'Deposit / Unit';
+        const labels = { sell: 'Sale Price / Unit', return: 'Refund / Unit (optional)', issue: 'Deposit / Unit' };
+        label.textContent = labels[actionSelect.value] || 'Deposit / Unit';
 
         if (selectedOption && selectedOption.value) {
             if (!qtyInput.value) qtyInput.value = 1;
             if (actionSelect.value === 'sell') {
                 priceInput.value = parseFloat(selectedOption.dataset.salePrice || 0).toFixed(2);
+            } else if (actionSelect.value === 'return' && !priceInput.value) {
+                priceInput.value = '0.00';
             }
         }
         calculateTotals();
@@ -419,6 +467,7 @@
         let subtotal = 0;
         let depositTotal = 0;
         let cylinderSaleTotal = 0;
+        let returnRefundTotal = 0;
 
         for (let i = 1; i <= itemCount; i++) {
             const row = document.getElementById('item_' + i);
@@ -440,8 +489,10 @@
 
             if (cylAction === 'issue') {
                 depositTotal += cylTotal;
-            } else {
+            } else if (cylAction === 'sell') {
                 cylinderSaleTotal += cylTotal;
+            } else if (cylAction === 'return') {
+                returnRefundTotal += cylTotal;
             }
         }
 
@@ -449,12 +500,16 @@
         const tax = parseFloat(document.getElementById('tax').value) || 0;
         const amountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
 
+        // Return refunds are shown for reference but not netted into the grand
+        // total — they're a separate cash-out event, not part of what the
+        // customer owes on this invoice.
         const grandTotal = subtotal + depositTotal + cylinderSaleTotal - discount + tax;
         const balanceDue = grandTotal - amountPaid;
 
         document.getElementById('subtotalDisplay').value = 'Rs. ' + subtotal.toFixed(2);
         document.getElementById('depositTotalDisplay').value = 'Rs. ' + depositTotal.toFixed(2);
         document.getElementById('cylinderSaleTotalDisplay').value = 'Rs. ' + cylinderSaleTotal.toFixed(2);
+        document.getElementById('returnRefundTotalDisplay').value = 'Rs. ' + returnRefundTotal.toFixed(2);
         document.getElementById('grandTotalDisplay').value = 'Rs. ' + grandTotal.toFixed(2);
         document.getElementById('balanceDisplay').value = 'Rs. ' + balanceDue.toFixed(2);
         document.getElementById('balanceDisplay').className = 'w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm font-semibold ' +
