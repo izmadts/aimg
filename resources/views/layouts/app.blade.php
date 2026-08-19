@@ -343,6 +343,65 @@
         .fade-in {
             animation: fadeIn 0.3s ease-out;
         }
+
+        /* ============================================
+           FORM & BUTTON VISIBILITY
+           Tailwind's default gray-300 border reads as washed-out on this
+           build — give editable fields, checkboxes, and neutral/secondary
+           buttons a real, visible colored border instead of flat gray.
+           Disabled/readonly fields are deliberately left plain gray so
+           "not editable" still reads differently from "editable".
+           ============================================ */
+        input[type="text"]:not(:disabled):not([readonly]),
+        input[type="number"]:not(:disabled):not([readonly]),
+        input[type="email"]:not(:disabled):not([readonly]),
+        input[type="password"]:not(:disabled):not([readonly]),
+        input[type="date"]:not(:disabled):not([readonly]),
+        input[type="datetime-local"]:not(:disabled):not([readonly]),
+        input[type="tel"]:not(:disabled):not([readonly]),
+        input[type="url"]:not(:disabled):not([readonly]),
+        input[type="search"]:not(:disabled):not([readonly]),
+        select:not(:disabled),
+        textarea:not(:disabled):not([readonly]) {
+            border-color: #93c5fd !important; /* blue-300 */
+            border-width: 1.5px !important;
+        }
+
+        input[type="text"]:not(:disabled):not([readonly]):focus,
+        input[type="number"]:not(:disabled):not([readonly]):focus,
+        input[type="email"]:not(:disabled):not([readonly]):focus,
+        input[type="password"]:not(:disabled):not([readonly]):focus,
+        input[type="date"]:not(:disabled):not([readonly]):focus,
+        input[type="datetime-local"]:not(:disabled):not([readonly]):focus,
+        input[type="tel"]:not(:disabled):not([readonly]):focus,
+        input[type="url"]:not(:disabled):not([readonly]):focus,
+        input[type="search"]:not(:disabled):not([readonly]):focus,
+        select:not(:disabled):focus,
+        textarea:not(:disabled):not([readonly]):focus {
+            border-color: #2563eb !important; /* blue-600 */
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+        }
+
+        input[type="checkbox"]:not(:disabled),
+        input[type="radio"]:not(:disabled) {
+            border-color: #60a5fa !important; /* blue-400 */
+            border-width: 1.5px !important;
+        }
+
+        /* Neutral "Cancel / Reset / Back" buttons: give them a real border
+           accent instead of a flat gray fill with no definition. Scoped to
+           .rounded-lg so the small bg-gray-300 toggle-switch track (rounded-full)
+           used elsewhere is left untouched. */
+        .bg-gray-200.rounded-lg,
+        .bg-gray-300.rounded-lg,
+        .bg-gray-400.rounded-lg {
+            border: 1.5px solid #94a3b8 !important; /* slate-400 */
+        }
+        .bg-gray-200.rounded-lg:hover,
+        .bg-gray-300.rounded-lg:hover,
+        .bg-gray-400.rounded-lg:hover {
+            border-color: #64748b !important; /* slate-500 */
+        }
     </style>
     
     @stack('styles')
