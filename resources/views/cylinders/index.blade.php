@@ -21,51 +21,61 @@
         </div>
     </div>
 
-    <!-- Statistics Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
-        <div class="bg-white rounded-lg shadow p-2 text-center">
-            <p class="text-xs text-gray-500">Total</p>
-            <p class="text-lg font-bold">{{ $stats['total'] }}</p>
+    <!-- Statistics: two clearly-labeled groups instead of one long row -->
+    <div class="space-y-3">
+        <div>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Cylinder Types by Status</p>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                <div class="bg-white rounded-lg shadow p-2 text-center">
+                    <p class="text-xs text-gray-500">Total Types</p>
+                    <p class="text-lg font-bold">{{ $stats['total'] }}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-blue-500">
+                    <p class="text-xs text-gray-500">In House</p>
+                    <p class="text-lg font-bold text-blue-600">{{ $stats['in_house'] }}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-yellow-500">
+                    <p class="text-xs text-gray-500">Partially Issued</p>
+                    <p class="text-lg font-bold text-yellow-600">{{ $stats['partial_issued'] }}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-orange-500">
+                    <p class="text-xs text-gray-500">All Issued</p>
+                    <p class="text-lg font-bold text-orange-600">{{ $stats['all_issued'] }}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-red-500">
+                    <p class="text-xs text-gray-500">Out of Stock</p>
+                    <p class="text-lg font-bold text-red-600">{{ $stats['out_of_stock'] }}</p>
+                </div>
+            </div>
         </div>
-        <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-blue-500">
-            <p class="text-xs text-gray-500">In House</p>
-            <p class="text-lg font-bold text-blue-600">{{ $stats['in_house'] }}</p>
+        <div>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Physical Stock Breakdown (all types combined)</p>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-teal-500">
+                    <p class="text-xs text-gray-500">Total Owned</p>
+                    <p class="text-lg font-bold text-teal-600">{{ $stats['total_stock'] }}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-cyan-500">
+                    <p class="text-xs text-gray-500">Filled</p>
+                    <p class="text-lg font-bold text-cyan-600">{{ $stats['total_filled'] }}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-amber-500">
+                    <p class="text-xs text-gray-500">Empty</p>
+                    <p class="text-lg font-bold text-amber-600">{{ $stats['total_empty'] }}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-purple-500">
+                    <p class="text-xs text-gray-500">Under Repair</p>
+                    <p class="text-lg font-bold text-purple-600">{{ $stats['under_maintenance'] }}</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-gray-500">
+                    <p class="text-xs text-gray-500">Scrapped</p>
+                    <p class="text-lg font-bold text-gray-600">{{ $stats['scrapped'] }}</p>
+                </div>
+            </div>
         </div>
-        <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-yellow-500">
-            <p class="text-xs text-gray-500">Partial</p>
-            <p class="text-lg font-bold text-yellow-600">{{ $stats['partial_issued'] }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-orange-500">
-            <p class="text-xs text-gray-500">All Issued</p>
-            <p class="text-lg font-bold text-orange-600">{{ $stats['all_issued'] }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-red-500">
-            <p class="text-xs text-gray-500">Out of Stock</p>
-            <p class="text-lg font-bold text-red-600">{{ $stats['out_of_stock'] }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-purple-500">
-            <p class="text-xs text-gray-500">Maintenance</p>
-            <p class="text-lg font-bold text-purple-600">{{ $stats['under_maintenance'] }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-gray-500">
-            <p class="text-xs text-gray-500">Scrapped</p>
-            <p class="text-lg font-bold text-gray-600">{{ $stats['scrapped'] }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-teal-500">
-            <p class="text-xs text-gray-500">Total Stock</p>
-            <p class="text-lg font-bold text-teal-600">{{ $stats['total_stock'] }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-green-500">
-            <p class="text-xs text-gray-500">Total Value</p>
-            <p class="text-lg font-bold text-green-600">Rs. {{ number_format($stats['total_value'], 0) }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-cyan-500">
-            <p class="text-xs text-gray-500">Filled</p>
-            <p class="text-lg font-bold text-cyan-600">{{ $stats['total_filled'] }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-amber-500">
-            <p class="text-xs text-gray-500">Empty</p>
-            <p class="text-lg font-bold text-amber-600">{{ $stats['total_empty'] }}</p>
+        <div class="bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-sm text-green-800 flex items-center justify-between">
+            <span><i class="fas fa-coins mr-2"></i>Total Cylinder Asset Value</span>
+            <span class="font-bold text-lg">Rs. {{ number_format($stats['total_value'], 0) }}</span>
         </div>
     </div>
 
@@ -84,8 +94,6 @@
                     <option value="partial_issued" {{ request('status') == 'partial_issued' ? 'selected' : '' }}>Partial</option>
                     <option value="all_issued" {{ request('status') == 'all_issued' ? 'selected' : '' }}>All Issued</option>
                     <option value="out_of_stock" {{ request('status') == 'out_of_stock' ? 'selected' : '' }}>Out of Stock</option>
-                    <option value="under_maintenance" {{ request('status') == 'under_maintenance' ? 'selected' : '' }}>Maintenance</option>
-                    <option value="scrapped" {{ request('status') == 'scrapped' ? 'selected' : '' }}>Scrapped</option>
                 </select>
             </div>
             <div>
@@ -123,6 +131,7 @@
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Issued</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Filled</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Empty</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Repair / Scrap</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Value</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -148,6 +157,24 @@
                                 {{ $cylinder->empty_quantity > 0 ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-500' }}">
                                 {{ $cylinder->empty_quantity }}
                             </span>
+                        </td>
+                        <td class="px-6 py-3 text-center">
+                            @if($cylinder->maintenance_quantity > 0 || $cylinder->scrap_quantity > 0)
+                                <div class="flex flex-col gap-0.5 items-center text-xs">
+                                    @if($cylinder->maintenance_quantity > 0)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-800">
+                                            <i class="fas fa-tools mr-1"></i>{{ $cylinder->maintenance_quantity }} repair
+                                        </span>
+                                    @endif
+                                    @if($cylinder->scrap_quantity > 0)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-gray-200 text-gray-700">
+                                            <i class="fas fa-dumpster mr-1"></i>{{ $cylinder->scrap_quantity }} scrap
+                                        </span>
+                                    @endif
+                                </div>
+                            @else
+                                <span class="text-gray-300 text-xs">—</span>
+                            @endif
                         </td>
                         <td class="px-6 py-3 text-center text-sm">Rs. {{ number_format($cylinder->purchase_price * $cylinder->stock_quantity, 0) }}</td>
                         <td class="px-6 py-3 text-center">
@@ -190,12 +217,16 @@
                                         class="text-teal-600 hover:text-teal-800" title="Update Stock">
                                     <i class="fas fa-boxes"></i>
                                 </button>
+                                <button onclick="openRepairModal({{ $cylinder->id }}, '{{ $cylinder->cylinder_number }}', {{ $cylinder->empty_quantity }}, {{ $cylinder->maintenance_quantity }}, {{ $cylinder->scrap_quantity }})"
+                                        class="text-purple-600 hover:text-purple-800" title="Repair / Scrap">
+                                    <i class="fas fa-tools"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="11" class="px-6 py-8 text-center text-gray-500">
+                        <td colspan="12" class="px-6 py-8 text-center text-gray-500">
                             <i class="fas fa-inbox text-3xl mb-2 text-gray-300 block"></i>
                             No cylinders found.
                             <a href="{{ route('cylinders.create') }}" class="text-blue-600 hover:underline ml-1">Add your first cylinder</a>
@@ -317,6 +348,63 @@
     </div>
 </div>
 
+<!-- Repair / Scrap Modal -->
+<div id="repairModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-lg font-semibold text-gray-900">
+                <i class="fas fa-tools text-purple-600 mr-2"></i> Repair / Scrap
+            </h3>
+            <button onclick="closeRepairModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <form id="repairForm" class="mt-4 space-y-4">
+            @csrf
+            <input type="hidden" name="cylinder_id" id="repair_cylinder_id">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder</label>
+                <input type="text" id="repair_cylinder_number" disabled class="w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Current Pools</label>
+                <input type="text" id="repair_current" disabled class="w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm text-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Action *</label>
+                <select id="repair_action" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" onchange="toggleRepairFields()">
+                    <option value="send">🔧 Send empty cylinders for repair</option>
+                    <option value="return">✅ Return repaired cylinders (back to Empty)</option>
+                    <option value="scrap">🗑️ Mark as scrap</option>
+                    <option value="dispose">❌ Dispose scrapped (write off in accounts)</option>
+                </select>
+            </div>
+            <div id="repair_from_pool_wrap" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Scrap from *</label>
+                <select id="repair_from_pool" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="empty">Empty pool</option>
+                    <option value="maintenance">Under-repair pool</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Quantity *</label>
+                <input type="number" id="repair_quantity" min="1" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            </div>
+            <p id="repair_hint" class="text-xs text-gray-400"></p>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea id="repair_notes" rows="2" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+            </div>
+            <div class="flex justify-end space-x-3 pt-4 border-t">
+                <button type="button" onclick="closeRepairModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg transition">Cancel</button>
+                <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition">
+                    <i class="fas fa-save mr-2"></i> Save
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 @push('scripts')
 <script>
     function openIssueModal(cylinderId, cylinderNumber) {
@@ -432,6 +520,86 @@
             }
         })
         .catch(error => alert('❌ Error processing request.'));
+    });
+
+    // ============================================
+    // REPAIR / SCRAP MODAL
+    // ============================================
+    let repairPools = { empty: 0, maintenance: 0, scrap: 0 };
+
+    function openRepairModal(cylinderId, cylinderNumber, emptyQty, maintenanceQty, scrapQty) {
+        repairPools = { empty: emptyQty, maintenance: maintenanceQty, scrap: scrapQty };
+        document.getElementById('repair_cylinder_id').value = cylinderId;
+        document.getElementById('repair_cylinder_number').value = cylinderNumber;
+        document.getElementById('repair_current').value = `${emptyQty} empty, ${maintenanceQty} under repair, ${scrapQty} scrap`;
+        document.getElementById('repair_action').value = 'send';
+        document.getElementById('repair_quantity').value = '';
+        document.getElementById('repair_notes').value = '';
+        toggleRepairFields();
+        document.getElementById('repairModal').classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function closeRepairModal() {
+        document.getElementById('repairModal').classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    document.getElementById('repairModal').addEventListener('click', function(e) {
+        if (e.target === this) closeRepairModal();
+    });
+
+    function toggleRepairFields() {
+        const action = document.getElementById('repair_action').value;
+        document.getElementById('repair_from_pool_wrap').classList.toggle('hidden', action !== 'scrap');
+
+        const hints = {
+            send: `Only cylinders from the Empty pool (${repairPools.empty} available) can be sent for repair.`,
+            return: `Repaired cylinders return to the Empty pool. Currently under repair: ${repairPools.maintenance}.`,
+            scrap: `Pick which pool the scrapped units are coming from.`,
+            dispose: `Permanently removes scrapped units and posts a write-off in accounting. Currently flagged scrap: ${repairPools.scrap}.`,
+        };
+        document.getElementById('repair_hint').textContent = hints[action] || '';
+    }
+
+    const repairRoutes = {
+        send: '{{ route("cylinders.maintenance.send") }}',
+        return: '{{ route("cylinders.maintenance.return") }}',
+        scrap: '{{ route("cylinders.scrap") }}',
+        dispose: '{{ route("cylinders.scrap.dispose") }}',
+    };
+
+    document.getElementById('repairForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const action = document.getElementById('repair_action').value;
+        const quantity = parseInt(document.getElementById('repair_quantity').value);
+
+        if (isNaN(quantity) || quantity < 1) {
+            alert('Please enter a valid quantity.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('cylinder_id', document.getElementById('repair_cylinder_id').value);
+        formData.append('quantity', quantity);
+        formData.append('notes', document.getElementById('repair_notes').value);
+        if (action === 'scrap') {
+            formData.append('from_pool', document.getElementById('repair_from_pool').value);
+        }
+        formData.append('_token', '{{ csrf_token() }}');
+
+        fetch(repairRoutes[action], { method: 'POST', body: formData })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    closeRepairModal();
+                    location.reload();
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            })
+            .catch(error => alert('❌ Error processing request.'));
     });
 </script>
 @endpush

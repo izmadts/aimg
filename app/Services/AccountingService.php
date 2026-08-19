@@ -33,6 +33,7 @@ class AccountingService
     public const DAMAGE_INCOME = '4005';
     public const COST_OF_GOODS_SOLD = '5001';
     public const SALARY_EXPENSE = '5002';
+    public const LOSS_ON_SCRAPPED_CYLINDERS = '5014';
 
     // ============================================
     // CORE POSTING ENGINE
@@ -328,6 +329,22 @@ class AccountingService
             ['account_code' => $owedCode, 'debit' => $creditAmount, 'description' => "Cylinder returned to supplier: {$purchase->purchase_invoice_no}"],
             ['account_code' => self::CYLINDER_ASSET, 'credit' => $creditAmount, 'description' => "Cylinder returned to supplier: {$purchase->purchase_invoice_no}"],
         ], 'purchase', $purchase);
+    }
+
+    /**
+     * A cylinder formally written off as scrap: relieve the asset at cost
+     * and recognize the loss. Only called at formal disposal — marking units
+     * as scrap on their own (Cylinder::markScrapped()) doesn't touch the books.
+     */
+    public function recordCylinderDisposal($cylinder, float $costValue): void
+    {
+        if ($costValue <= 0) {
+            return;
+        }
+        $this->post([
+            ['account_code' => self::LOSS_ON_SCRAPPED_CYLINDERS, 'debit' => $costValue, 'description' => "Cylinders disposed/written off: {$cylinder->cylinder_number}"],
+            ['account_code' => self::CYLINDER_ASSET, 'credit' => $costValue, 'description' => "Cylinder asset written off: {$cylinder->cylinder_number}"],
+        ], 'writeoff', $cylinder);
     }
 
     // ============================================

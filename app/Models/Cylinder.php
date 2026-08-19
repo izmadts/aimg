@@ -19,6 +19,8 @@ class Cylinder extends Model
         'stock_quantity',
         'issued_quantity',
         'filled_quantity',
+        'maintenance_quantity',
+        'scrap_quantity',
         'purchase_price',
         'sale_price',
         'status',
@@ -34,6 +36,8 @@ class Cylinder extends Model
         'stock_quantity' => 'integer',
         'issued_quantity' => 'integer',
         'filled_quantity' => 'integer',
+        'maintenance_quantity' => 'integer',
+        'scrap_quantity' => 'integer',
         'purchase_price' => 'decimal:2',
         'sale_price' => 'decimal:2',
     ];
@@ -142,13 +146,17 @@ class Cylinder extends Model
     }
 
     /**
-     * In the warehouse, not issued, but not yet filled with gas.
-     * Not a stored column on purpose — always derived so it can never drift
-     * out of sync with stock/issued/filled.
+     * In the warehouse, not issued, not filled, and not set aside as
+     * maintenance/scrap. Not a stored column on purpose — always derived so
+     * it can never drift out of sync with stock/issued/filled/maintenance/scrap.
      */
     public function getEmptyQuantityAttribute()
     {
-        return max(0, $this->stock_quantity - ($this->issued_quantity ?? 0) - ($this->filled_quantity ?? 0));
+        return max(0, $this->stock_quantity
+            - ($this->issued_quantity ?? 0)
+            - ($this->filled_quantity ?? 0)
+            - ($this->maintenance_quantity ?? 0)
+            - ($this->scrap_quantity ?? 0));
     }
 
     public function getTotalAssetValueAttribute()
@@ -244,6 +252,7 @@ class Cylinder extends Model
             'maintenance_in' => 'fa-tools',
             'maintenance_out' => 'fa-check',
             'scrapped' => 'fa-trash',
+            'disposed' => 'fa-dumpster',
             'stock_update' => 'fa-boxes'
         ];
         return $icons[$type] ?? 'fa-circle';
@@ -259,6 +268,7 @@ class Cylinder extends Model
             'maintenance_in' => 'orange',
             'maintenance_out' => 'green',
             'scrapped' => 'red',
+            'disposed' => 'gray',
             'stock_update' => 'blue'
         ];
         return $colors[$type] ?? 'gray';
@@ -273,7 +283,8 @@ class Cylinder extends Model
             'purchased' => 'Purchased / Stock Added',
             'maintenance_in' => 'Sent to Maintenance',
             'maintenance_out' => 'Returned from Maintenance',
-            'scrapped' => 'Scrapped',
+            'scrapped' => 'Marked as Scrap',
+            'disposed' => 'Disposed / Written Off',
             'stock_update' => 'Stock Updated'
         ];
         return $labels[$type] ?? ucfirst(str_replace('_', ' ', $type));
@@ -456,6 +467,108 @@ class Cylinder extends Model
         ]);
 
         return true;
+    }
+
+    /**
+     * Pull units out of the empty pool and into repair. Still owned, just
+     * unavailable for filling/issuing until they come back.
+     */
+    public function sendToMaintenance($quantity = 1, $notes = null)
+    {
+        $locked = static::whereKey($this->id)->lockForUpdate()->first();
+        if ($locked->empty_quantity < $quantity) {
+            throw new \Exception('Insufficient empty stock to send to maintenance. Empty: ' . $locked->empty_quantity);
+        }
+
+        $this->increment('maintenance_quantity', $quantity);
+
+        $this->transactions()->create([
+            'user_id' => auth()->id(),
+            'transaction_type' => 'maintenance_in',
+            'transaction_date' => now(),
+            'remarks' => "Sent {$quantity} piece(s) for maintenance" . ($notes ? " — {$notes}" : ''),
+        ]);
+
+        return $this;
+    }
+
+    /**
+     * Units come back from repair into the empty pool (repaired units are
+     * treated as empty, not filled — they still need gas).
+     */
+    public function returnFromMaintenance($quantity = 1, $notes = null)
+    {
+        $locked = static::whereKey($this->id)->lockForUpdate()->first();
+        if ($locked->maintenance_quantity < $quantity) {
+            throw new \Exception('Cannot return more than is in maintenance. In maintenance: ' . $locked->maintenance_quantity);
+        }
+
+        $this->decrement('maintenance_quantity', $quantity);
+
+        $this->transactions()->create([
+            'user_id' => auth()->id(),
+            'transaction_type' => 'maintenance_out',
+            'transaction_date' => now(),
+            'remarks' => "Returned {$quantity} piece(s) from maintenance" . ($notes ? " — {$notes}" : ''),
+        ]);
+
+        return $this;
+    }
+
+    /**
+     * Flag units as scrap, pending formal disposal. No accounting impact yet —
+     * still an owned asset on the books, just physically junk. $fromPool is
+     * where the units are coming from right now: 'empty' or 'maintenance'.
+     */
+    public function markScrapped($quantity = 1, $fromPool = 'empty', $notes = null)
+    {
+        $locked = static::whereKey($this->id)->lockForUpdate()->first();
+        $poolQuantity = $fromPool === 'maintenance' ? $locked->maintenance_quantity : $locked->empty_quantity;
+
+        if ($poolQuantity < $quantity) {
+            throw new \Exception("Insufficient {$fromPool} stock to scrap. Available: " . $poolQuantity);
+        }
+
+        if ($fromPool === 'maintenance') {
+            $this->decrement('maintenance_quantity', $quantity);
+        }
+        $this->increment('scrap_quantity', $quantity);
+
+        $this->transactions()->create([
+            'user_id' => auth()->id(),
+            'transaction_type' => 'scrapped',
+            'transaction_date' => now(),
+            'remarks' => "Marked {$quantity} piece(s) as scrap (from {$fromPool})" . ($notes ? " — {$notes}" : ''),
+        ]);
+
+        return $this;
+    }
+
+    /**
+     * Formal write-off: permanently removes scrapped units from the fleet
+     * (stock_quantity drops for good) and posts the accounting loss.
+     */
+    public function disposeScrapped($quantity = 1, $notes = null)
+    {
+        $locked = static::whereKey($this->id)->lockForUpdate()->first();
+        if ($locked->scrap_quantity < $quantity) {
+            throw new \Exception('Cannot dispose more than is flagged as scrap. Scrap: ' . $locked->scrap_quantity);
+        }
+
+        $this->decrement('stock_quantity', $quantity);
+        $this->decrement('scrap_quantity', $quantity);
+        $this->updateStatus();
+
+        app(\App\Services\AccountingService::class)->recordCylinderDisposal($this, (float) $this->purchase_price * $quantity);
+
+        $this->transactions()->create([
+            'user_id' => auth()->id(),
+            'transaction_type' => 'disposed',
+            'transaction_date' => now(),
+            'remarks' => "Disposed {$quantity} piece(s), written off" . ($notes ? " — {$notes}" : ''),
+        ]);
+
+        return $this;
     }
 
     // ============================================

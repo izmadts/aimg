@@ -56,15 +56,15 @@ class CylinderController extends Controller
             'in_house' => Cylinder::where('status', 'in_house')->count(),
             'partial_issued' => Cylinder::where('status', 'partial_issued')->count(),
             'all_issued' => Cylinder::where('status', 'all_issued')->count(),
-            'under_maintenance' => Cylinder::where('status', 'under_maintenance')->count(),
-            'scrapped' => Cylinder::where('status', 'scrapped')->count(),
             'out_of_stock' => Cylinder::where('status', 'out_of_stock')->count(),
             'total_stock' => Cylinder::sum('stock_quantity'),
             'total_issued' => Cylinder::sum('issued_quantity'),
             'total_value' => Cylinder::sum(DB::raw('purchase_price * stock_quantity')),
         ];
         $stats['total_filled'] = Cylinder::sum('filled_quantity');
-        $stats['total_empty'] = max(0, $stats['total_stock'] - $stats['total_issued'] - $stats['total_filled']);
+        $stats['under_maintenance'] = Cylinder::sum('maintenance_quantity');
+        $stats['scrapped'] = Cylinder::sum('scrap_quantity');
+        $stats['total_empty'] = max(0, $stats['total_stock'] - $stats['total_issued'] - $stats['total_filled'] - $stats['under_maintenance'] - $stats['scrapped']);
 
         $gasProducts = GasProduct::where('is_active', true)->get();
         $customers = Customer::where('is_active', true)->get();
@@ -428,6 +428,109 @@ class CylinderController extends Controller
     }
 
     // ============================================
+    // MAINTENANCE / SCRAP (AJAX)
+    // ============================================
+    public function sendToMaintenance(Request $request)
+    {
+        $request->validate([
+            'cylinder_id' => 'required|exists:cylinders,id',
+            'quantity' => 'required|integer|min:1',
+            'notes' => 'nullable|string|max:500'
+        ]);
+
+        $cylinder = Cylinder::find($request->cylinder_id);
+
+        try {
+            $cylinder->sendToMaintenance($request->quantity, $request->notes);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Sent {$request->quantity} piece(s) for maintenance.",
+                'maintenance_quantity' => $cylinder->fresh()->maintenance_quantity,
+                'empty_quantity' => $cylinder->fresh()->empty_quantity,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+    }
+
+    public function returnFromMaintenance(Request $request)
+    {
+        $request->validate([
+            'cylinder_id' => 'required|exists:cylinders,id',
+            'quantity' => 'required|integer|min:1',
+            'notes' => 'nullable|string|max:500'
+        ]);
+
+        $cylinder = Cylinder::find($request->cylinder_id);
+
+        try {
+            $cylinder->returnFromMaintenance($request->quantity, $request->notes);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Returned {$request->quantity} piece(s) from maintenance.",
+                'maintenance_quantity' => $cylinder->fresh()->maintenance_quantity,
+                'empty_quantity' => $cylinder->fresh()->empty_quantity,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+    }
+
+    public function scrapCylinders(Request $request)
+    {
+        $request->validate([
+            'cylinder_id' => 'required|exists:cylinders,id',
+            'quantity' => 'required|integer|min:1',
+            'from_pool' => 'required|in:empty,maintenance',
+            'notes' => 'nullable|string|max:500'
+        ]);
+
+        $cylinder = Cylinder::find($request->cylinder_id);
+
+        try {
+            $cylinder->markScrapped($request->quantity, $request->from_pool, $request->notes);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Marked {$request->quantity} piece(s) as scrap.",
+                'scrap_quantity' => $cylinder->fresh()->scrap_quantity,
+                'maintenance_quantity' => $cylinder->fresh()->maintenance_quantity,
+                'empty_quantity' => $cylinder->fresh()->empty_quantity,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+    }
+
+    public function disposeCylinders(Request $request)
+    {
+        $request->validate([
+            'cylinder_id' => 'required|exists:cylinders,id',
+            'quantity' => 'required|integer|min:1',
+            'notes' => 'nullable|string|max:500'
+        ]);
+
+        $cylinder = Cylinder::find($request->cylinder_id);
+
+        try {
+            DB::transaction(function () use ($cylinder, $request) {
+                $cylinder->disposeScrapped($request->quantity, $request->notes);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => "Disposed {$request->quantity} piece(s) — written off in accounts.",
+                'stock_quantity' => $cylinder->fresh()->stock_quantity,
+                'scrap_quantity' => $cylinder->fresh()->scrap_quantity,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+    }
+
+    // ============================================
     // GET AVAILABLE CYLINDERS (AJAX)
     // ============================================
     public function available(Request $request)
@@ -501,7 +604,7 @@ class CylinderController extends Controller
             $file = fopen('php://output', 'w');
             fputcsv($file, [
                 'Cylinder #', 'Gas', 'Type', 'Stock', 'Issued',
-                'Filled', 'Empty', 'Purchase Price', 'Sale Price', 'Status', 'Supplier'
+                'Filled', 'Empty', 'Maintenance', 'Scrap', 'Purchase Price', 'Sale Price', 'Status', 'Supplier'
             ]);
 
             foreach ($cylinders as $cylinder) {
@@ -513,6 +616,8 @@ class CylinderController extends Controller
                     $cylinder->issued_quantity,
                     $cylinder->filled_quantity,
                     $cylinder->empty_quantity,
+                    $cylinder->maintenance_quantity,
+                    $cylinder->scrap_quantity,
                     $cylinder->purchase_price,
                     $cylinder->sale_price,
                     $cylinder->status_label,

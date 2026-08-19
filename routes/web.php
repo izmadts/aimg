@@ -74,6 +74,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/cylinders/issue', [CylinderController::class, 'issue'])->name('cylinders.issue');
         Route::post('/cylinders/return', [CylinderController::class, 'returnCylinder'])->name('cylinders.return');
         Route::post('/cylinders/transfer', [CylinderController::class, 'storeTransfer'])->name('cylinders.transfer.store');
+        Route::post('/cylinders/maintenance/send', [CylinderController::class, 'sendToMaintenance'])->name('cylinders.maintenance.send');
+        Route::post('/cylinders/maintenance/return', [CylinderController::class, 'returnFromMaintenance'])->name('cylinders.maintenance.return');
+        Route::post('/cylinders/scrap', [CylinderController::class, 'scrapCylinders'])->name('cylinders.scrap');
+        Route::post('/cylinders/scrap/dispose', [CylinderController::class, 'disposeCylinders'])->name('cylinders.scrap.dispose');
     });
     Route::resource('cylinders', CylinderController::class)
         ->middlewareFor(['index', 'show'], 'permission:cylinders.view')

@@ -127,6 +127,16 @@
                         <span class="text-gray-500">Empty</span>
                         <span class="font-bold text-amber-600">{{ $cylinder->empty_quantity }}</span>
                     </div>
+                    @if($cylinder->maintenance_quantity > 0 || $cylinder->scrap_quantity > 0)
+                    <div class="flex justify-between border-t pt-2">
+                        <span class="text-gray-500"><i class="fas fa-tools mr-1"></i>Under Repair</span>
+                        <span class="font-bold text-purple-600">{{ $cylinder->maintenance_quantity }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500"><i class="fas fa-dumpster mr-1"></i>Scrapped (pending disposal)</span>
+                        <span class="font-bold text-gray-600">{{ $cylinder->scrap_quantity }}</span>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
