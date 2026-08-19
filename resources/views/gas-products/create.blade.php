@@ -23,7 +23,8 @@
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                    <input type="text" name="name" value="{{ old('name') }}" required
+                    <input type="text" name="name" id="gas_name" value="{{ old('name') }}" required
+                           oninput="suggestDensity()"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('name')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
@@ -41,7 +42,8 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Unit of Measure (UOM) *</label>
-                    <select name="uom" required
+                    <select name="uom" id="gas_uom" required
+                            onchange="toggleDensityField()"
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         <option value="">Select UOM</option>
                         @foreach($units as $unit)
@@ -54,6 +56,17 @@
                     </p>
                     @endcan
                     @error('uom')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div id="density_wrap">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Density (KG per Cubic Meter)</label>
+                    <input type="number" step="0.0001" min="0.0001" name="density_kg_per_m3" id="density_kg_per_m3"
+                           value="{{ old('density_kg_per_m3') }}"
+                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <p class="text-xs text-gray-400 mt-1" id="density_hint">Used to show this gas's Cubic Meter stock in KG automatically. Auto-filled for common gases — check it's right.</p>
+                    @error('density_kg_per_m3')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
@@ -124,4 +137,32 @@
         </form>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    const knownDensities = @json(\App\Models\GasProduct::KNOWN_DENSITIES);
+
+    function toggleDensityField() {
+        const uom = document.getElementById('gas_uom').value;
+        const wrap = document.getElementById('density_wrap');
+        wrap.classList.toggle('hidden', !uom.toLowerCase().includes('cubic meter'));
+    }
+
+    function suggestDensity() {
+        const name = document.getElementById('gas_name').value.trim().toLowerCase();
+        const densityInput = document.getElementById('density_kg_per_m3');
+        if (densityInput.value) return; // don't overwrite a value the user already typed
+
+        const match = Object.keys(knownDensities).find(key => name.includes(key));
+        if (match) {
+            densityInput.value = knownDensities[match];
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleDensityField();
+        suggestDensity();
+    });
+</script>
+@endpush
 @endsection

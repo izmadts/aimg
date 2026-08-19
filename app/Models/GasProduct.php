@@ -13,6 +13,7 @@ class GasProduct extends Model
         'name',
         'code',
         'uom',
+        'density_kg_per_m3',
         'purchase_price',
         'sale_price',
         'current_stock',
@@ -26,7 +27,26 @@ class GasProduct extends Model
         'purchase_price' => 'decimal:2',
         'sale_price' => 'decimal:2',
         'current_stock' => 'decimal:2',
-        'minimum_stock_level' => 'decimal:2'
+        'minimum_stock_level' => 'decimal:2',
+        'density_kg_per_m3' => 'decimal:4'
+    ];
+
+    /**
+     * Common industrial/medical gas densities in KG per cubic meter (at
+     * standard conditions), used only to pre-fill the density field for a
+     * recognized gas name — never applied automatically to stored data.
+     */
+    public const KNOWN_DENSITIES = [
+        'oxygen' => 1.4290,
+        'nitrogen' => 1.2506,
+        'argon' => 1.7840,
+        'carbon dioxide' => 1.9770,
+        'acetylene' => 1.0970,
+        'nitrous oxide' => 1.9770,
+        'helium' => 0.1786,
+        'hydrogen' => 0.0899,
+        'ammonia' => 0.7290,
+        'propane' => 1.8820,
     ];
 
     // Relationships
@@ -103,6 +123,26 @@ class GasProduct extends Model
     public function getStockValueAttribute()
     {
         return $this->current_stock * $this->purchase_price;
+    }
+
+    /**
+     * Current stock converted to KG, when it's meaningful to show one:
+     * already in KG (identity), or in Cubic Meter with a density on file.
+     * Null otherwise — nothing to convert from/to.
+     */
+    public function getStockInKgAttribute()
+    {
+        $uom = mb_strtolower(trim($this->uom ?? ''));
+
+        if ($uom === 'kg' || $uom === 'kilogram') {
+            return (float) $this->current_stock;
+        }
+
+        if (str_contains($uom, 'cubic meter') && $this->density_kg_per_m3 > 0) {
+            return round((float) $this->current_stock * (float) $this->density_kg_per_m3, 2);
+        }
+
+        return null;
     }
 
     // Methods

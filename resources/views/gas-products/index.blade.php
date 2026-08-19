@@ -106,8 +106,11 @@
                                 @elseif($product->stock_status === 'low') bg-yellow-100 text-yellow-800
                                 @else bg-red-100 text-red-800
                                 @endif">
-                                {{ $product->current_stock }}
+                                {{ $product->current_stock }} {{ $product->uom }}
                             </span>
+                            @if($product->stock_in_kg !== null && !in_array(strtolower($product->uom ?? ''), ['kg', 'kilogram']))
+                                <p class="text-xs text-gray-400 mt-0.5">≈ {{ number_format($product->stock_in_kg, 2) }} kg</p>
+                            @endif
                         </td>
                         <td class="px-6 py-3">
                             @if($product->cylinders->isEmpty())

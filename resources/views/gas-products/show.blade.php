@@ -51,9 +51,15 @@
                             @elseif($gasProduct->stock_status === 'low') text-yellow-600
                             @else text-red-600
                             @endif">
-                            {{ number_format($gasProduct->current_stock, 2) }}
+                            {{ number_format($gasProduct->current_stock, 2) }} {{ $gasProduct->uom }}
                         </span>
                     </div>
+                    @if($gasProduct->stock_in_kg !== null && !in_array(strtolower($gasProduct->uom ?? ''), ['kg', 'kilogram']))
+                    <div class="flex justify-between">
+                        <span class="text-xs text-gray-400">≈ in KG</span>
+                        <span class="text-sm text-gray-500">{{ number_format($gasProduct->stock_in_kg, 2) }} kg</span>
+                    </div>
+                    @endif
                     <div class="flex justify-between">
                         <span class="text-sm text-gray-500">Min Stock Level</span>
                         <span class="font-semibold">{{ number_format($gasProduct->minimum_stock_level, 2) }}</span>

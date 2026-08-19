@@ -20,6 +20,7 @@ class StoreGasProductRequest extends FormRequest
             'name' => 'required|string|max:255',
             'code' => ['required', 'string', 'max:50', Rule::unique('gas_products', 'code')->ignore($gasProductId)],
             'uom' => 'required|string|max:20',
+            'density_kg_per_m3' => 'nullable|numeric|min:0.0001|max:100',
             'purchase_price' => 'required|numeric|min:0',
             'sale_price' => 'required|numeric|min:0|gte:purchase_price',
             'current_stock' => 'nullable|numeric|min:0',

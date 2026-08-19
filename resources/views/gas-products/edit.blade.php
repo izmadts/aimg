@@ -42,7 +42,8 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Unit of Measure (UOM) *</label>
-                    <select name="uom" required
+                    <select name="uom" id="gas_uom" required
+                            onchange="toggleDensityField()"
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         @foreach($units as $unit)
                             <option value="{{ $unit->name }}" {{ old('uom', $gasProduct->uom) == $unit->name ? 'selected' : '' }}>{{ $unit->name }}</option>
@@ -54,6 +55,17 @@
                     </p>
                     @endcan
                     @error('uom')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div id="density_wrap">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Density (KG per Cubic Meter)</label>
+                    <input type="number" step="0.0001" min="0.0001" name="density_kg_per_m3" id="density_kg_per_m3"
+                           value="{{ old('density_kg_per_m3', $gasProduct->density_kg_per_m3) }}"
+                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <p class="text-xs text-gray-400 mt-1">Used to show this gas's Cubic Meter stock in KG automatically.</p>
+                    @error('density_kg_per_m3')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
@@ -124,4 +136,16 @@
         </form>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    function toggleDensityField() {
+        const uom = document.getElementById('gas_uom').value;
+        const wrap = document.getElementById('density_wrap');
+        wrap.classList.toggle('hidden', !uom.toLowerCase().includes('cubic meter'));
+    }
+
+    document.addEventListener('DOMContentLoaded', toggleDensityField);
+</script>
+@endpush
 @endsection
