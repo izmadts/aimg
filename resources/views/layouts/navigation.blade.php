@@ -23,6 +23,14 @@
                 <i class="fas fa-bell text-xl"></i>
                 <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">3</span>
             </button>
+
+            <!-- System Health Check (admin only) -->
+            @if(Auth::user()->isAdmin())
+                <a href="{{ route('system-health.index') }}" title="System Health Check"
+                   class="relative text-gray-400 hover:text-red-500 transition-colors">
+                    <i class="fas fa-heart-pulse text-xl"></i>
+                </a>
+            @endif
             
             <!-- Quick Actions -->
             <div class="hidden md:flex items-center space-x-2">

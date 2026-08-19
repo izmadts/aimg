@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CylinderController;
+use App\Http\Controllers\SystemHealthController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\PurchaseController;
@@ -32,6 +33,11 @@ Route::middleware(['auth'])->group(function () {
 
     // Help / User Guide (every authenticated user)
     Route::view('/help', 'help.index')->name('help.index');
+
+    // System Health Check (admin only — enforced inside the controller,
+    // since it must hold regardless of what permissions a role is granted)
+    Route::get('/system-health', [SystemHealthController::class, 'index'])->name('system-health.index');
+    Route::post('/system-health/reconcile', [SystemHealthController::class, 'reconcile'])->name('system-health.reconcile');
 
     // Profile Routes (every authenticated user manages their own profile)
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
