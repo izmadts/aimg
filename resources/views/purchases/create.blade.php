@@ -269,7 +269,7 @@
                     <p class="text-xs font-semibold text-blue-700 mb-2 uppercase">🧪 Gas (optional)</p>
                     <select name="items[${n}][gas_product_id]" id="gas_product_${n}"
                             class="w-full rounded-lg border-gray-300 shadow-sm text-sm mb-2"
-                            onchange="autoFillGasPrice(${n})">
+                            onchange="autoFillGasPrice(${n}); updateGasConversion(${n})">
                         <option value="">— No gas on this line —</option>
                         ${gasOptions}
                     </select>
@@ -277,7 +277,7 @@
                         <div>
                             <label class="block text-xs text-gray-500 mb-0.5">Quantity</label>
                             <input type="number" step="0.01" min="0.01" name="items[${n}][gas_quantity]" id="gas_qty_${n}"
-                                   class="w-full rounded-lg border-gray-300 shadow-sm text-sm" oninput="calculateTotals()">
+                                   class="w-full rounded-lg border-gray-300 shadow-sm text-sm" oninput="calculateTotals(); updateGasConversion(${n})">
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500 mb-0.5">Price / Unit</label>
@@ -285,6 +285,7 @@
                                    class="w-full rounded-lg border-gray-300 shadow-sm text-sm" oninput="calculateTotals()">
                         </div>
                     </div>
+                    <p class="text-xs text-blue-600 mt-1" id="gas_conversion_${n}"></p>
                     <div class="text-right text-sm mt-2">
                         <span class="text-gray-500">Gas Total:</span>
                         <span class="font-semibold text-blue-700" id="gas_total_${n}">Rs. 0.00</span>
@@ -364,6 +365,35 @@
             priceInput.value = '';
         }
         calculateTotals();
+    }
+
+    // ============================================
+    // GAS QUANTITY UNIT CONVERSION (KG <-> Cubic Meter)
+    // ============================================
+    function updateGasConversion(n) {
+        const select = document.getElementById('gas_product_' + n);
+        const qty = parseFloat(document.getElementById('gas_qty_' + n)?.value) || 0;
+        const hint = document.getElementById('gas_conversion_' + n);
+        if (!hint) return;
+
+        const productId = select.value;
+        const product = gasProducts.find(p => String(p.id) === String(productId));
+
+        if (!product || !qty || !product.density_kg_per_m3) {
+            hint.textContent = '';
+            return;
+        }
+
+        const uom = (product.uom || '').toLowerCase();
+        const density = parseFloat(product.density_kg_per_m3);
+
+        if (uom.includes('cubic meter')) {
+            hint.textContent = `≈ ${(qty * density).toFixed(2)} kg`;
+        } else if (uom.includes('kg') || uom.includes('kilogram')) {
+            hint.textContent = `≈ ${(qty / density).toFixed(2)} m³`;
+        } else {
+            hint.textContent = '';
+        }
     }
 
     function autoFillCylinderPrice(n) {
