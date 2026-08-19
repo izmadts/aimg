@@ -21,56 +21,67 @@
         </div>
     </div>
 
-    <!-- Statistics: two clearly-labeled groups instead of one long row -->
+    <!-- Statistics: two clearly-labeled groups instead of one long row.
+         Every card is a link that filters the table below to match it. -->
     <div class="space-y-3">
         <div>
-            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Cylinder Types by Status</p>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Cylinder Types by Status &mdash; click a card to filter the table</p>
             <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <div class="bg-white rounded-lg shadow p-2 text-center">
+                <a href="{{ route('cylinders.index') }}"
+                   class="block bg-white rounded-lg shadow p-2 text-center transition hover:shadow-md {{ !request('status') && !request('pool') ? 'ring-2 ring-gray-400' : '' }}">
                     <p class="text-xs text-gray-500">Total Types</p>
                     <p class="text-lg font-bold">{{ $stats['total'] }}</p>
-                </div>
-                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-blue-500">
+                </a>
+                <a href="{{ route('cylinders.index', ['status' => 'in_house']) }}"
+                   class="block bg-white rounded-lg shadow p-2 text-center border-l-4 border-blue-500 transition hover:shadow-md {{ request('status') === 'in_house' ? 'ring-2 ring-blue-400' : '' }}">
                     <p class="text-xs text-gray-500">In House</p>
                     <p class="text-lg font-bold text-blue-600">{{ $stats['in_house'] }}</p>
-                </div>
-                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-yellow-500">
+                </a>
+                <a href="{{ route('cylinders.index', ['status' => 'partial_issued']) }}"
+                   class="block bg-white rounded-lg shadow p-2 text-center border-l-4 border-yellow-500 transition hover:shadow-md {{ request('status') === 'partial_issued' ? 'ring-2 ring-yellow-400' : '' }}">
                     <p class="text-xs text-gray-500">Partially Issued</p>
                     <p class="text-lg font-bold text-yellow-600">{{ $stats['partial_issued'] }}</p>
-                </div>
-                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-orange-500">
+                </a>
+                <a href="{{ route('cylinders.index', ['status' => 'all_issued']) }}"
+                   class="block bg-white rounded-lg shadow p-2 text-center border-l-4 border-orange-500 transition hover:shadow-md {{ request('status') === 'all_issued' ? 'ring-2 ring-orange-400' : '' }}">
                     <p class="text-xs text-gray-500">All Issued</p>
                     <p class="text-lg font-bold text-orange-600">{{ $stats['all_issued'] }}</p>
-                </div>
-                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-red-500">
+                </a>
+                <a href="{{ route('cylinders.index', ['status' => 'out_of_stock']) }}"
+                   class="block bg-white rounded-lg shadow p-2 text-center border-l-4 border-red-500 transition hover:shadow-md {{ request('status') === 'out_of_stock' ? 'ring-2 ring-red-400' : '' }}">
                     <p class="text-xs text-gray-500">Out of Stock</p>
                     <p class="text-lg font-bold text-red-600">{{ $stats['out_of_stock'] }}</p>
-                </div>
+                </a>
             </div>
         </div>
         <div>
-            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Physical Stock Breakdown (all types combined)</p>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Physical Stock Breakdown (all types combined) &mdash; click a card to filter the table</p>
             <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-teal-500">
+                <a href="{{ route('cylinders.index') }}"
+                   class="block bg-white rounded-lg shadow p-2 text-center border-l-4 border-teal-500 transition hover:shadow-md {{ !request('status') && !request('pool') ? 'ring-2 ring-teal-400' : '' }}">
                     <p class="text-xs text-gray-500">Total Owned</p>
                     <p class="text-lg font-bold text-teal-600">{{ $stats['total_stock'] }}</p>
-                </div>
-                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-cyan-500">
+                </a>
+                <a href="{{ route('cylinders.index', ['pool' => 'filled']) }}"
+                   class="block bg-white rounded-lg shadow p-2 text-center border-l-4 border-cyan-500 transition hover:shadow-md {{ request('pool') === 'filled' ? 'ring-2 ring-cyan-400' : '' }}">
                     <p class="text-xs text-gray-500">Filled</p>
                     <p class="text-lg font-bold text-cyan-600">{{ $stats['total_filled'] }}</p>
-                </div>
-                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-amber-500">
+                </a>
+                <a href="{{ route('cylinders.index', ['pool' => 'empty']) }}"
+                   class="block bg-white rounded-lg shadow p-2 text-center border-l-4 border-amber-500 transition hover:shadow-md {{ request('pool') === 'empty' ? 'ring-2 ring-amber-400' : '' }}">
                     <p class="text-xs text-gray-500">Empty</p>
                     <p class="text-lg font-bold text-amber-600">{{ $stats['total_empty'] }}</p>
-                </div>
-                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-purple-500">
+                </a>
+                <a href="{{ route('cylinders.index', ['pool' => 'maintenance']) }}"
+                   class="block bg-white rounded-lg shadow p-2 text-center border-l-4 border-purple-500 transition hover:shadow-md {{ request('pool') === 'maintenance' ? 'ring-2 ring-purple-400' : '' }}">
                     <p class="text-xs text-gray-500">Under Repair</p>
                     <p class="text-lg font-bold text-purple-600">{{ $stats['under_maintenance'] }}</p>
-                </div>
-                <div class="bg-white rounded-lg shadow p-2 text-center border-l-4 border-gray-500">
+                </a>
+                <a href="{{ route('cylinders.index', ['pool' => 'scrap']) }}"
+                   class="block bg-white rounded-lg shadow p-2 text-center border-l-4 border-gray-500 transition hover:shadow-md {{ request('pool') === 'scrap' ? 'ring-2 ring-gray-400' : '' }}">
                     <p class="text-xs text-gray-500">Scrapped</p>
                     <p class="text-lg font-bold text-gray-600">{{ $stats['scrapped'] }}</p>
-                </div>
+                </a>
             </div>
         </div>
         <div class="bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-sm text-green-800 flex items-center justify-between">

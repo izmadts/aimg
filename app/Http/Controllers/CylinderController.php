@@ -45,11 +45,25 @@ class CylinderController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Clicking a "Physical Stock Breakdown" card filters to types that
+        // actually have units in that pool. Empty has no stored column
+        // (Cylinder::getEmptyQuantityAttribute() derives it), so it's
+        // filtered with the identical formula via whereRaw.
+        if ($request->filled('pool')) {
+            match ($request->pool) {
+                'filled' => $query->where('filled_quantity', '>', 0),
+                'empty' => $query->whereRaw('(stock_quantity - issued_quantity - filled_quantity - maintenance_quantity - scrap_quantity) > 0'),
+                'maintenance' => $query->where('maintenance_quantity', '>', 0),
+                'scrap' => $query->where('scrap_quantity', '>', 0),
+                default => null,
+            };
+        }
+
         if ($request->filled('gas_product_id')) {
             $query->where('gas_product_id', $request->gas_product_id);
         }
 
-        $cylinders = $query->orderBy('created_at', 'desc')->paginate(20);
+        $cylinders = $query->orderBy('created_at', 'desc')->paginate(20)->withQueryString();
 
         $stats = [
             'total' => Cylinder::count(),
