@@ -285,7 +285,11 @@
                                    class="w-full rounded-lg border-gray-300 shadow-sm text-sm" oninput="calculateTotals()">
                         </div>
                     </div>
-                    <p class="text-xs text-blue-600 mt-1" id="gas_conversion_${n}"></p>
+                    <div id="gas_conversion_wrap_${n}" class="hidden mt-2">
+                        <label class="block text-xs text-gray-500 mb-0.5" id="gas_conversion_label_${n}">Equivalent</label>
+                        <input type="text" id="gas_conversion_${n}" disabled
+                               class="w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm text-sm text-gray-500">
+                    </div>
                     <div class="text-right text-sm mt-2">
                         <span class="text-gray-500">Gas Total:</span>
                         <span class="font-semibold text-blue-700" id="gas_total_${n}">Rs. 0.00</span>
@@ -373,14 +377,16 @@
     function updateGasConversion(n) {
         const select = document.getElementById('gas_product_' + n);
         const qty = parseFloat(document.getElementById('gas_qty_' + n)?.value) || 0;
-        const hint = document.getElementById('gas_conversion_' + n);
-        if (!hint) return;
+        const wrap = document.getElementById('gas_conversion_wrap_' + n);
+        const label = document.getElementById('gas_conversion_label_' + n);
+        const field = document.getElementById('gas_conversion_' + n);
+        if (!wrap) return;
 
         const productId = select.value;
         const product = gasProducts.find(p => String(p.id) === String(productId));
 
-        if (!product || !qty || !product.density_kg_per_m3) {
-            hint.textContent = '';
+        if (!product || !product.density_kg_per_m3) {
+            wrap.classList.add('hidden');
             return;
         }
 
@@ -388,11 +394,15 @@
         const density = parseFloat(product.density_kg_per_m3);
 
         if (uom.includes('cubic meter')) {
-            hint.textContent = `≈ ${(qty * density).toFixed(2)} kg`;
-        } else if (uom.includes('kg') || uom.includes('kilogram')) {
-            hint.textContent = `≈ ${(qty / density).toFixed(2)} m³`;
+            label.textContent = 'Equivalent in KG — disabled, auto-calculated';
+            field.value = qty ? (qty * density).toFixed(2) + ' kg' : '';
+            wrap.classList.remove('hidden');
+        } else if (uom === 'kg' || uom === 'kilogram') {
+            label.textContent = 'Equivalent in Cubic Meter — disabled, auto-calculated';
+            field.value = qty ? (qty / density).toFixed(2) + ' m³' : '';
+            wrap.classList.remove('hidden');
         } else {
-            hint.textContent = '';
+            wrap.classList.add('hidden');
         }
     }
 

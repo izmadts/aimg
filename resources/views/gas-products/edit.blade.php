@@ -89,12 +89,20 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Current Stock</label>
-                    <input type="number" step="0.01" name="current_stock" value="{{ old('current_stock', $gasProduct->current_stock) }}"
+                    <label class="block text-sm font-medium text-gray-700 mb-1" id="current_stock_label">Current Stock</label>
+                    <input type="number" step="0.01" name="current_stock" id="current_stock" value="{{ old('current_stock', $gasProduct->current_stock) }}"
+                           oninput="updateStockUnitFields()"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('current_stock')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                     @enderror
+                </div>
+
+                <div id="current_stock_other_wrap" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1" id="current_stock_other_label">Equivalent</label>
+                    <input type="text" id="current_stock_other" disabled
+                           class="w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm text-gray-500">
+                    <p class="text-xs text-gray-400 mt-1">Auto-calculated from the density above — not entered directly.</p>
                 </div>
 
                 <div>
@@ -143,9 +151,44 @@
         const uom = document.getElementById('gas_uom').value;
         const wrap = document.getElementById('density_wrap');
         wrap.classList.toggle('hidden', !uom.toLowerCase().includes('cubic meter'));
+        updateStockUnitFields();
     }
 
-    document.addEventListener('DOMContentLoaded', toggleDensityField);
+    // ============================================
+    // CURRENT STOCK: KG <-> Cubic Meter (one is always the entered unit,
+    // matching the product's own UOM; the other is disabled and computed
+    // live from density, never entered directly)
+    // ============================================
+    function updateStockUnitFields() {
+        const uom = (document.getElementById('gas_uom').value || '').toLowerCase();
+        const density = parseFloat(document.getElementById('density_kg_per_m3')?.value) || 0;
+        const stock = parseFloat(document.getElementById('current_stock').value) || 0;
+
+        const primaryLabel = document.getElementById('current_stock_label');
+        const otherWrap = document.getElementById('current_stock_other_wrap');
+        const otherLabel = document.getElementById('current_stock_other_label');
+        const otherInput = document.getElementById('current_stock_other');
+
+        if (uom.includes('cubic meter') && density > 0) {
+            primaryLabel.textContent = 'Current Stock (Cubic Meter)';
+            otherLabel.textContent = 'Current Stock (KG) — disabled, auto-calculated';
+            otherInput.value = (stock * density).toFixed(2);
+            otherWrap.classList.remove('hidden');
+        } else if ((uom === 'kg' || uom === 'kilogram') && density > 0) {
+            primaryLabel.textContent = 'Current Stock (KG)';
+            otherLabel.textContent = 'Current Stock (Cubic Meter) — disabled, auto-calculated';
+            otherInput.value = (stock / density).toFixed(2);
+            otherWrap.classList.remove('hidden');
+        } else {
+            primaryLabel.textContent = 'Current Stock';
+            otherWrap.classList.add('hidden');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleDensityField();
+        document.getElementById('density_kg_per_m3').addEventListener('input', updateStockUnitFields);
+    });
 </script>
 @endpush
 @endsection
