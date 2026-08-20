@@ -97,7 +97,7 @@ class CustomerController extends Controller
 
             foreach ($openingCylinders as $row) {
                 $cylinder = Cylinder::findOrFail($row['cylinder_id']);
-                $cylinder->issueToCustomer(
+                $cylinder->recordOpeningBalance(
                     $customer->id,
                     (int) $row['quantity'],
                     (float) ($row['security_deposit'] ?? 0),

@@ -399,6 +399,45 @@ class Cylinder extends Model
         return $detail;
     }
 
+    /**
+     * Record cylinders a customer already held before they were entered into
+     * the system (paper-register onboarding) — NOT a live issuance. These
+     * units were never part of today's warehouse filled/empty pools, so
+     * unlike issueToCustomer(), this adds them to stock_quantity instead of
+     * drawing down filled_quantity, and never fails on "insufficient stock"
+     * (there's nothing to check against — the fact being recorded is that
+     * the shop owns more units than previously known, already out with a
+     * customer, fill status unknown and irrelevant).
+     */
+    public function recordOpeningBalance($customerId, $quantity = 1, $securityDeposit = 0, $reference = null)
+    {
+        $detail = $this->issuedDetails()->create([
+            'customer_id' => $customerId,
+            'quantity' => $quantity,
+            'issue_date' => now(),
+            'security_deposit' => $securityDeposit,
+            'reference_document' => $reference,
+            'status' => 'issued',
+            'created_by' => auth()->id(),
+        ]);
+
+        $this->increment('stock_quantity', $quantity);
+        $this->increment('issued_quantity', $quantity);
+        $this->updateStatus();
+
+        $this->transactions()->create([
+            'customer_id' => $customerId,
+            'user_id' => auth()->id(),
+            'transaction_type' => 'issued',
+            'transaction_date' => now(),
+            'security_deposit_charged' => $securityDeposit,
+            'remarks' => "Opening balance: {$quantity} piece(s) already held by customer before onboarding (fill status unknown, not drawn from warehouse stock)",
+            'reference_document' => $reference,
+        ]);
+
+        return $detail;
+    }
+
     public function returnFromCustomer($customerId, $quantity = 1, $damageCharge = 0, $refund = 0, $reference = null, $condition = null)
     {
         $details = $this->issuedDetails()
