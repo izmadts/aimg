@@ -67,7 +67,9 @@
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Type *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Type *
+                        <x-help-tip text="Must match the line items below exactly (e.g. 'Gas Only' rejects the purchase if you add a cylinder line) — pick this first, or last, to match what you actually add." />
+                    </label>
                     <select name="purchase_type" id="purchase_type" required
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         <option value="gas_only" {{ old('purchase_type') == 'gas_only' ? 'selected' : '' }}>🧪 Gas Only</option>
@@ -126,7 +128,9 @@
                            class="w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm font-semibold">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Total (purchased)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Total (purchased)
+                        <x-help-tip text="Only sums lines with Action = Purchase. Exchange and Return to Supplier lines don't add to this — they don't involve buying a cylinder outright." />
+                    </label>
                     <input type="text" id="cylinderTotalDisplay" readonly
                            class="w-full rounded-lg bg-purple-50 border-purple-200 shadow-sm font-semibold text-purple-700">
                 </div>
@@ -307,7 +311,9 @@
                     </select>
                     <div class="grid grid-cols-3 gap-2">
                         <div>
-                            <label class="block text-xs text-gray-500 mb-0.5">Action</label>
+                            <label class="block text-xs text-gray-500 mb-0.5">Action
+                                <x-help-tip text="Purchase: new units bought, added to stock and asset value. Exchange: swapping our empties for the supplier's filled ones, no cash for the cylinder itself. Return to supplier: sending units back, relieves our asset value." />
+                            </label>
                             <select name="items[${n}][cylinder_action]" id="cylinder_action_${n}"
                                     class="w-full rounded-lg border-gray-300 shadow-sm text-sm" onchange="autoFillCylinderPrice(${n})">
                                 <option value="purchase">Purchase (new/empty)</option>

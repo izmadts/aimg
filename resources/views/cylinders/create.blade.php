@@ -22,7 +22,9 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Number</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Number
+                        <x-help-tip text="Optional — leave blank and one is auto-generated (e.g. CYL-000001). This identifies the cylinder TYPE record, not a single physical cylinder." />
+                    </label>
                     <input type="text" name="cylinder_number" value="{{ old('cylinder_number') }}" 
                            placeholder="Auto-generated if empty"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
@@ -32,7 +34,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Gas Product *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Gas Product *
+                        <x-help-tip text="Which gas this cylinder type holds. Picking one auto-suggests a Purchase/Sale price below from that gas's own pricing — you can still edit them." />
+                    </label>
                     <select name="gas_product_id" id="gas_product_id" required
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                             onchange="autoDetectPrice()">
@@ -52,7 +56,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Type *
+                        <x-help-tip text="The size/category from your Cylinder Types list (e.g. Small, Large). Also sets the Capacity field below automatically." />
+                    </label>
                     <select name="type" id="type" required
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                             onchange="autoDetectPrice()">
@@ -76,7 +82,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Manufacturer</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Manufacturer
+                        <x-help-tip text="Optional. Who made this cylinder — for your own records only, doesn't affect stock or pricing." />
+                    </label>
                     <input type="text" name="manufacturer" value="{{ old('manufacturer') }}"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('manufacturer')
@@ -85,7 +93,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Tare Weight (KG) *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tare Weight (KG) *
+                        <x-help-tip text="The empty cylinder's own weight. Used to work out how much gas is actually inside when a cylinder is weighed full vs. empty." />
+                    </label>
                     <input type="number" step="0.01" name="tare_weight" value="{{ old('tare_weight') }}" required
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('tare_weight')
@@ -94,7 +104,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Capacity (m3)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Capacity (m3)
+                        <x-help-tip text="Read-only — comes from the Type selected above so it can never drift out of sync. To change it, edit the Type itself in Cylinder Types." />
+                    </label>
                     <input type="number" step="0.01" name="capacity" id="capacity" value="{{ old('capacity') }}" required readonly
                            class="w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm text-gray-600">
                     <p class="text-xs text-gray-400 mt-1">Comes from the selected Type — set it there if it's wrong.</p>
@@ -104,7 +116,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Stock Quantity *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Stock Quantity *
+                        <x-help-tip text="Total units of this type the shop owns. This is the master total — every other count (Filled, Empty, Issued) is drawn from it." />
+                    </label>
                     <input type="number" name="stock_quantity" id="stock_quantity" value="{{ old('stock_quantity', 1) }}" required min="0"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                            oninput="calculatePrices(); syncFilledMax()">
@@ -114,7 +128,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">— Of Which, Filled *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">— Of Which, Filled *
+                        <x-help-tip text="How many of the Stock Quantity above already have gas in them right now. The rest count as empty and can't be sold/issued until a Gas Transfer fills them." />
+                    </label>
                     <input type="number" name="filled_quantity" id="filled_quantity" value="{{ old('filled_quantity', 1) }}" required min="0"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     <p class="text-xs text-gray-400 mt-1">The rest are counted as empty, waiting to be filled.</p>
@@ -130,7 +146,9 @@
                     </h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Price (Rs.) *</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Price (Rs.) *
+                                <x-help-tip text="What you paid per unit. Feeds Total Asset Value and the Margin % below — doesn't affect what you charge customers." />
+                            </label>
                             <input type="number" step="0.01" name="purchase_price" id="purchase_price" 
                                    value="{{ old('purchase_price') }}" required
                                    class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -140,7 +158,9 @@
                             @enderror
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Sale Price (Rs.) *</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Sale Price (Rs.) *
+                                <x-help-tip text="What you charge per unit when selling this cylinder outright. Must be at or above Purchase Price." />
+                            </label>
                             <input type="number" step="0.01" name="sale_price" id="sale_price" 
                                    value="{{ old('sale_price') }}" required
                                    class="w-full rounded-lg border-green-300 bg-green-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 font-bold text-green-700"
@@ -150,7 +170,9 @@
                             @enderror
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Margin (%)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Margin (%)
+                                <x-help-tip text="Read-only. Auto-calculated as (Sale Price − Purchase Price) ÷ Purchase Price × 100." />
+                            </label>
                             <input type="text" id="margin_percentage" readonly
                                    class="w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm font-semibold text-blue-600">
                         </div>
@@ -172,7 +194,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier
+                        <x-help-tip text="Optional. Who you bought this batch from — for your own records, shown on the cylinder's detail page." />
+                    </label>
                     <select name="supplier_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         <option value="">Select Supplier</option>
                         @foreach($suppliers as $supplier)
@@ -187,7 +211,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Date</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Date
+                        <x-help-tip text="Optional. When this batch was bought — for your own records only." />
+                    </label>
                     <input type="date" name="purchase_date" value="{{ old('purchase_date') }}"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('purchase_date')

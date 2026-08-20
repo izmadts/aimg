@@ -22,7 +22,9 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name *
+                        <x-help-tip text="The gas's real name (e.g. Oxygen, Nitrogen). Typing a recognized gas here auto-suggests its density below, for the KG/Cubic Meter conversion." />
+                    </label>
                     <input type="text" name="name" id="gas_name" value="{{ old('name') }}" required
                            oninput="suggestDensity()"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
@@ -32,7 +34,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Code *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Code *
+                        <x-help-tip text="A short unique reference code for this product (your own convention, e.g. OX-01). Used internally and on exports/reports." />
+                    </label>
                     <input type="text" name="code" value="{{ old('code') }}" required
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('code')
@@ -41,7 +45,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Unit of Measure (UOM) *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Unit of Measure (UOM) *
+                        <x-help-tip text="What unit this gas's stock and price are counted in. Choosing Cubic Meter or KG unlocks live conversion between the two elsewhere in the app." />
+                    </label>
                     <select name="uom" id="gas_uom" required
                             onchange="toggleDensityField()"
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
@@ -61,7 +67,9 @@
                 </div>
 
                 <div id="density_wrap">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Density (KG per Cubic Meter)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Density (KG per Cubic Meter)
+                        <x-help-tip text="How much 1 m³ of this specific gas weighs. Different gases weigh differently, so this must be set per product for the KG conversion to be accurate." />
+                    </label>
                     <input type="number" step="0.0001" min="0.0001" name="density_kg_per_m3" id="density_kg_per_m3"
                            value="{{ old('density_kg_per_m3') }}"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
@@ -72,7 +80,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Price (Rs.) *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Price (Rs.) *
+                        <x-help-tip text="What you pay per unit (per your chosen UOM) when buying this gas from a supplier." />
+                    </label>
                     <input type="number" step="0.01" name="purchase_price" value="{{ old('purchase_price') }}" required
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('purchase_price')
@@ -81,7 +91,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Sale Price (Rs.) *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Sale Price (Rs.) *
+                        <x-help-tip text="What you charge customers per unit. Must be greater than or equal to Purchase Price." />
+                    </label>
                     <input type="number" step="0.01" name="sale_price" value="{{ old('sale_price') }}" required
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('sale_price')
@@ -90,7 +102,10 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" id="current_stock_label">Current Stock</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        <span id="current_stock_label">Current Stock</span>
+                        <x-help-tip text="How much of this gas you currently have. Feeds Stock Value, low-stock alerts, and how much can be sold/transferred." />
+                    </label>
                     <input type="number" step="0.01" name="current_stock" id="current_stock" value="{{ old('current_stock', 0) }}"
                            oninput="updateStockUnitFields()"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
@@ -107,7 +122,9 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Minimum Stock Level</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Minimum Stock Level
+                        <x-help-tip text="The threshold below which this product shows as Low Stock / Out of Stock status on the list page. Doesn't block sales." />
+                    </label>
                     <input type="number" step="0.01" name="minimum_stock_level" value="{{ old('minimum_stock_level', 0) }}"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('minimum_stock_level')

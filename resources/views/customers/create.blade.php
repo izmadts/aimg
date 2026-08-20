@@ -51,7 +51,9 @@
 
                 <!-- ERP Customer ID (legacy system reference) -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Old System ID</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Old System ID
+                        <x-help-tip text="Only if migrating from a previous ERP/system — the ID this customer had there. Separate from the new Customer ID, which is always auto-generated." />
+                    </label>
                     <input type="text" name="erp_customer_id" value="{{ old('erp_customer_id') }}"
                            placeholder="Optional — ID from a previous system"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
@@ -92,7 +94,9 @@
 
                 <!-- Security Deposit -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Security Deposit (Rs.)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Security Deposit (Rs.)
+                        <x-help-tip text="A general deposit on file for this customer overall — separate from the per-cylinder deposits recorded below or on each Sale." />
+                    </label>
                     <input type="number" step="0.01" name="security_deposit" value="{{ old('security_deposit', 0) }}"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('security_deposit')

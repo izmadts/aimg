@@ -91,7 +91,9 @@
 
                 <!-- ERP Supplier ID (legacy system reference) -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Old System ID</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Old System ID
+                        <x-help-tip text="Only if migrated from a previous ERP/system — the ID this supplier had there. Separate from the new Supplier ID, which is always auto-generated." />
+                    </label>
                     <input type="text" name="erp_supplier_id" value="{{ old('erp_supplier_id') }}"
                            placeholder="Optional — ID from a previous system"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
@@ -122,7 +124,9 @@
 
                 <!-- Opening Balance -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Opening Balance (Rs.)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Opening Balance (Rs.)
+                        <x-help-tip text="What was already owed before joining this system — whether that's you owing them or them owing you depends on the Balance Type field next to it." />
+                    </label>
                     <input type="number" step="0.01" name="opening_balance" value="{{ old('opening_balance', 0) }}"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('opening_balance')
@@ -132,7 +136,9 @@
 
                 <!-- Balance Type -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Balance Type</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Balance Type
+                        <x-help-tip text="Payable: you owe them the Opening Balance amount (shown as a negative). Receivable: they owe you (shown as positive)." />
+                    </label>
                     <select name="balance_type" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         <option value="payable" {{ old('balance_type') == 'payable' ? 'selected' : '' }}>Payable to Supplier</option>
                         <option value="receivable" {{ old('balance_type') == 'receivable' ? 'selected' : '' }}>Receivable from Supplier</option>
@@ -144,7 +150,9 @@
 
                 <!-- Cylinder Deposit Paid -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Deposit Paid (Rs.)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Deposit Paid (Rs.)
+                        <x-help-tip text="Reference/record-keeping only — a deposit you've paid this supplier for cylinders on loan from them. Not wired into any automatic calculation yet." />
+                    </label>
                     <input type="number" step="0.01" name="cylinder_deposit_paid" value="{{ old('cylinder_deposit_paid', 0) }}"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('cylinder_deposit_paid')
@@ -154,7 +162,9 @@
 
                 <!-- Cylinder Return Days -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Return Days</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Return Days
+                        <x-help-tip text="Reference/record-keeping only — how many days this supplier expects their loaned cylinders back within. Not currently enforced automatically." />
+                    </label>
                     <input type="number" name="cylinder_return_days" value="{{ old('cylinder_return_days', 7) }}"
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     @error('cylinder_return_days')

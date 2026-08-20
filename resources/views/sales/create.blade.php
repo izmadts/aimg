@@ -135,17 +135,23 @@
                            class="w-full rounded-lg bg-gray-100 border-gray-300 shadow-sm font-semibold">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Deposit Total</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Deposit Total
+                        <x-help-tip text="Sum of all 'Issue' lines — a refundable deposit collected, not revenue. Included in Grand Total." />
+                    </label>
                     <input type="text" id="depositTotalDisplay" readonly
                            class="w-full rounded-lg bg-yellow-50 border-yellow-200 shadow-sm font-semibold text-yellow-700">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Sale Total</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Sale Total
+                        <x-help-tip text="Sum of all 'Sell' lines — real revenue, and relieves those cylinders from your asset value. Included in Grand Total." />
+                    </label>
                     <input type="text" id="cylinderSaleTotalDisplay" readonly
                            class="w-full rounded-lg bg-blue-50 border-blue-200 shadow-sm font-semibold text-blue-700">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Refund for Returns (paid separately)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Refund for Returns (paid separately)
+                        <x-help-tip text="Sum of all 'Return' lines' refund amounts. NOT included in Grand Total below — it's a separate payout to the customer, posted as its own accounting entry." />
+                    </label>
                     <input type="text" id="returnRefundTotalDisplay" readonly
                            class="w-full rounded-lg bg-red-50 border-red-200 shadow-sm font-semibold text-red-700">
                 </div>
@@ -334,7 +340,9 @@
                     </select>
                     <div class="grid grid-cols-3 gap-2">
                         <div>
-                            <label class="block text-xs text-gray-500 mb-0.5">Action</label>
+                            <label class="block text-xs text-gray-500 mb-0.5">Action
+                                <x-help-tip text="Issue: goes out on deposit, still owned by us. Sell: permanently sold, removed from our asset value. Return: customer is giving cylinders back to us." />
+                            </label>
                             <select name="items[${n}][cylinder_action]" id="cylinder_action_${n}"
                                     class="w-full rounded-lg border-gray-300 shadow-sm text-sm" onchange="autoFillCylinderPrice(${n})">
                                 <option value="issue">Issue (deposit)</option>

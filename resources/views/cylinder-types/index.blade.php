@@ -99,20 +99,26 @@
             @csrf
             <input type="hidden" name="_method" id="type_method" value="POST">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Name *
+                    <x-help-tip text="The size/category label (e.g. Small, Large, Jumbo). Appears in every Cylinder Type dropdown across the app once saved." />
+                </label>
                 <input type="text" name="name" id="type_name" required maxlength="50"
                        placeholder="e.g. Large, Medium, Small"
                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Capacity (m3) *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Capacity (m3) *
+                    <x-help-tip text="Default gas capacity for this size. Every cylinder created under this type gets it automatically and it can't be re-entered per-cylinder." />
+                </label>
                 <input type="number" step="0.01" min="0.01" name="capacity" id="type_capacity" required
                        placeholder="e.g. 9.9"
                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 <p class="text-xs text-gray-400 mt-1">Every cylinder created under this type gets this capacity automatically.</p>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Price Premium (Rs.)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Price Premium (Rs.)
+                    <x-help-tip text="A reference value for this size only — not automatically applied anywhere. Useful as a note for manual pricing when selling a cylinder of this type." />
+                </label>
                 <input type="number" step="0.01" min="0" name="price_premium" id="type_price_premium"
                        placeholder="0.00"
                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">

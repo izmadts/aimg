@@ -148,7 +148,9 @@
         <form method="POST" action="{{ route('cylinders.transfer.store') }}" class="mt-4 space-y-4">
             @csrf
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Gas Product (from bulk/bowser stock) *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Gas Product (from bulk/bowser stock) *
+                    <x-help-tip text="Which gas is being moved out of bulk/bowser storage. Only cylinders already holding this same gas will show in the next field." />
+                </label>
                 <select name="gas_product_id" id="transfer_gas_product_id" required
                         class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         onchange="filterTransferCylinders()">
@@ -161,7 +163,9 @@
                 </select>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Type (being filled) *</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cylinder Type (being filled) *
+                    <x-help-tip text="Which cylinder size is receiving the gas. Only its currently Empty units can be filled — check the count shown under this field." />
+                </label>
                 <select name="cylinder_id" id="transfer_cylinder_id" required
                         class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         onchange="syncCylinderQuantityMax()">
@@ -171,12 +175,16 @@
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Gas Quantity Transferred *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Gas Quantity Transferred *
+                        <x-help-tip text="How much gas (in the bulk product's own unit) is being used to fill the cylinders below. Deducted from your bulk stock." />
+                    </label>
                     <input type="number" step="0.01" min="0.01" name="gas_quantity" id="transfer_gas_quantity" required
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinders Filled *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cylinders Filled *
+                        <x-help-tip text="How many units of the selected cylinder type this gas is going into. Moves that many from Empty to Filled." />
+                    </label>
                     <input type="number" step="1" min="1" name="cylinder_quantity" id="transfer_cylinder_quantity" required
                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>

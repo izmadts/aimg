@@ -402,6 +402,70 @@
         .bg-gray-400.rounded-lg:hover {
             border-color: #64748b !important; /* slate-500 */
         }
+
+        /* ============================================
+           FIELD HELP TIPS (x-help-tip component)
+           A small "?" next to a label. Click/tap or keyboard-focus to open;
+           click anywhere else, or the icon again, to close. Positioned so
+           the bubble never gets clipped off the left/right edge of the
+           viewport on narrow screens.
+           ============================================ */
+        .help-tip {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            margin-left: 5px;
+            color: #94a3b8; /* slate-400 */
+            cursor: help;
+            vertical-align: middle;
+        }
+        .help-tip:hover,
+        .help-tip:focus {
+            color: #2563eb; /* blue-600 */
+            outline: none;
+        }
+        .help-tip i {
+            font-size: 0.8rem;
+        }
+        .help-tip-bubble {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            z-index: 60;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            width: max-content;
+            max-width: 260px;
+            background: #1e293b; /* slate-800 */
+            color: #f1f5f9;
+            font-weight: 400;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            text-align: left;
+            padding: 8px 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: opacity 0.12s ease, transform 0.12s ease;
+            pointer-events: none;
+            white-space: normal;
+        }
+        .help-tip-bubble::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #1e293b;
+        }
+        .help-tip:hover .help-tip-bubble,
+        .help-tip:focus .help-tip-bubble,
+        .help-tip.help-tip-open .help-tip-bubble {
+            visibility: visible;
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
     </style>
     
     @stack('styles')
@@ -456,6 +520,17 @@
     
     <!-- JavaScript -->
     <script>
+        // Field help tips (x-help-tip): tap/click to open on touch devices
+        // (no :hover there), click the icon again or anywhere else to close.
+        window.toggleHelpTip = function(el) {
+            const wasOpen = el.classList.contains('help-tip-open');
+            document.querySelectorAll('.help-tip-open').forEach(t => t.classList.remove('help-tip-open'));
+            if (!wasOpen) el.classList.add('help-tip-open');
+        };
+        document.addEventListener('click', function() {
+            document.querySelectorAll('.help-tip-open').forEach(t => t.classList.remove('help-tip-open'));
+        });
+
         document.addEventListener('DOMContentLoaded', function() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
