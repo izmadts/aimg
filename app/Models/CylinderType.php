@@ -12,11 +12,13 @@ class CylinderType extends Model
     protected $fillable = [
         'name',
         'capacity',
+        'price_premium',
         'is_active',
     ];
 
     protected $casts = [
         'capacity' => 'decimal:2',
+        'price_premium' => 'decimal:2',
         'is_active' => 'boolean',
     ];
 

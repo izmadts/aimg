@@ -30,6 +30,7 @@
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Default Capacity (m3)</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price Premium</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Used By</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -40,6 +41,7 @@
                     <tr class="hover:bg-gray-50 transition">
                         <td class="px-6 py-3 font-mono font-medium">{{ $type->name }}</td>
                         <td class="px-6 py-3 text-right text-sm">{{ $type->capacity ?? '—' }}</td>
+                        <td class="px-6 py-3 text-right text-sm">Rs. {{ number_format($type->price_premium, 2) }}</td>
                         <td class="px-6 py-3 text-center text-sm">{{ $type->usage_count }} cylinder(s)</td>
                         <td class="px-6 py-3 text-center">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
@@ -50,7 +52,7 @@
                         <td class="px-6 py-3 text-center">
                             <div class="flex items-center justify-center space-x-2">
                                 <button type="button"
-                                        onclick="openTypeModal({{ $type->id }}, '{{ addslashes($type->name) }}', {{ $type->capacity ?? 'null' }}, {{ $type->is_active ? 'true' : 'false' }})"
+                                        onclick="openTypeModal({{ $type->id }}, '{{ addslashes($type->name) }}', {{ $type->capacity ?? 'null' }}, {{ $type->price_premium ?? 0 }}, {{ $type->is_active ? 'true' : 'false' }})"
                                         class="text-yellow-600 hover:text-yellow-800 transition" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </button>
@@ -69,7 +71,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">
                             <i class="fas fa-inbox text-3xl mb-2 text-gray-300 block"></i>
                             No cylinder types found.
                             <button type="button" onclick="openTypeModal()" class="text-blue-600 hover:underline ml-1">Add your first type</button>
@@ -109,6 +111,13 @@
                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 <p class="text-xs text-gray-400 mt-1">Every cylinder created under this type gets this capacity automatically.</p>
             </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Price Premium (Rs.)</label>
+                <input type="number" step="0.01" min="0" name="price_premium" id="type_price_premium"
+                       placeholder="0.00"
+                       class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <p class="text-xs text-gray-400 mt-1">Reference value for this size — e.g. added on top of the gas sale price when pricing a cylinder.</p>
+            </div>
             <div class="flex items-center">
                 <input type="checkbox" name="is_active" id="type_is_active" value="1" checked
                        class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500">
@@ -128,7 +137,7 @@
 <script>
     const typeBaseUrl = '{{ url('cylinder-types') }}';
 
-    function openTypeModal(id, name, capacity, isActive) {
+    function openTypeModal(id, name, capacity, pricePremium, isActive) {
         const form = document.getElementById('typeForm');
         const title = document.getElementById('typeModalTitle');
 
@@ -138,6 +147,7 @@
             title.innerHTML = '<i class="fas fa-edit text-yellow-600 mr-2"></i> Edit Cylinder Type';
             document.getElementById('type_name').value = name;
             document.getElementById('type_capacity').value = capacity ?? '';
+            document.getElementById('type_price_premium').value = pricePremium ?? 0;
             document.getElementById('type_is_active').checked = isActive;
         } else {
             form.action = typeBaseUrl;

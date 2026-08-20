@@ -24,6 +24,7 @@ class CylinderTypeController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:50|unique:cylinder_types,name',
             'capacity' => 'required|numeric|min:0.01',
+            'price_premium' => 'nullable|numeric|min:0',
         ]);
         $validated['is_active'] = $request->boolean('is_active', true);
 
@@ -37,6 +38,7 @@ class CylinderTypeController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:50|unique:cylinder_types,name,' . $cylinderType->id,
             'capacity' => 'required|numeric|min:0.01',
+            'price_premium' => 'nullable|numeric|min:0',
         ]);
         $validated['is_active'] = $request->boolean('is_active', true);
 
